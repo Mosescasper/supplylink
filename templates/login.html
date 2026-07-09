@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Log in — SupplyLink{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card" style="--card-accent:var(--cyan); --card-glow:rgba(45,212,238,.18);">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}" style="margin-bottom:1.25rem;">
+            <span>{{ message }}</span>
+            <button type="button" onclick="this.parentElement.remove()">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="auth-brand">
+      <div class="brand-icon">💊</div>
+      <div class="brand-name">SupplyLink</div>
+    </div>
+
+    <p class="auth-eyebrow"><span class="status-dot" style="display:inline-block; margin-right:.4rem; vertical-align:middle;"></span>SYSTEM ACCESS</p>
+    <h1 class="auth-title">Log in</h1>
+    <p class="auth-sub">Enter your credentials to reach the dashboard.</p>
+
+    <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autofocus placeholder="you@hospital.org">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-primary">Log in</button>
+    </form>
+
+    <p class="auth-switch">No account yet? <a href="{{ url_for('register') }}">Register</a></p>
+  </div>
+</div>
+{% endblock %}

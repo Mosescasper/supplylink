@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SupplyLink{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08080b;
+    --panel:#101014;
+    --panel-alt:#0c0c10;
+    --border-subtle:#1f1f26;
+    --text:#f2f2f5;
+    --text-muted:#8a8a95;
+    --mono:'JetBrains Mono', monospace;
+    --sans:'Inter', -apple-system, sans-serif;
+    --cyan:#2dd4ee;
+    --red:#ff3b5f;
+    --orange:#ff9d3d;
+    --purple:#b866ff;
+    --pink:#ff36c6;
+    --yellow:#f5e642;
+    --green:#2ee6a8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+
+  /* ---------- Sidebar ---------- */
+  .app-shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:230px; flex-shrink:0; background:var(--panel-alt);
+    border-right:1px solid var(--border-subtle);
+    padding:1.5rem 1rem; display:flex; flex-direction:column;
+    position:fixed; top:0; bottom:0; left:0;
+  }
+  .brand{display:flex; align-items:center; gap:.65rem; margin-bottom:2.25rem; padding:0 .35rem;}
+  .brand-icon{
+    width:34px; height:34px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg,var(--red),var(--orange));
+    display:flex; align-items:center; justify-content:center; font-size:1rem;
+  }
+  .brand-name{font-weight:700; font-size:1.05rem; letter-spacing:.01em;}
+  .nav-group{display:flex; flex-direction:column; gap:.15rem; flex:1;}
+  .nav-link{
+    display:flex; align-items:center; gap:.7rem; padding:.55rem .75rem;
+    border-radius:9px; color:var(--text-muted); text-decoration:none;
+    font-size:.9rem; font-weight:500; transition:background .15s, color .15s;
+  }
+  .nav-link .ic{width:1.1em; display:inline-flex; justify-content:center;}
+  .nav-link:hover{background:rgba(255,255,255,.04); color:var(--text);}
+  .nav-link.active{background:rgba(45,212,238,.08); color:var(--cyan);}
+  .sidebar-footer{border-top:1px solid var(--border-subtle); padding-top:.75rem; margin-top:.75rem;}
+  .user-chip{font-size:.78rem; color:var(--text-muted); padding:0 .35rem; margin-bottom:.5rem; display:flex; flex-direction:column; gap:.2rem;}
+  .role-pill{
+    display:inline-block; font-family:var(--mono); font-size:.65rem; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--cyan); background:rgba(45,212,238,.1);
+    border:1px solid rgba(45,212,238,.25); border-radius:5px; padding:.15rem .4rem; width:fit-content;
+  }
+
+  /* ---------- Main content ---------- */
+  .main{margin-left:230px; flex:1; padding:2rem 2.5rem; min-width:0;}
+  .no-sidebar .main{margin-left:0; padding:0;}
+
+  /* ---------- Page header (title + actions, e.g. role badge / readout) ---------- */
+  .page-header{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    gap:.75rem; margin-bottom:1.5rem;
+  }
+  .page-title{font-size:1.4rem; font-weight:700; margin:0;}
+  .page-header-actions{display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;}
+
+  /* ---------- Flash messages ---------- */
+  .flash{
+    font-family:var(--mono); font-size:.85rem; padding:.75rem 1rem; border-radius:10px;
+    margin-bottom:1rem; border:1px solid var(--border-subtle); background:var(--panel);
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  }
+  .flash.success{border-color:rgba(46,230,168,.35); color:var(--green);}
+  .flash.danger{border-color:rgba(255,59,95,.35); color:var(--red);}
+  .flash.warning{border-color:rgba(255,157,61,.35); color:var(--orange);}
+  .flash.info{border-color:rgba(45,212,238,.35); color:var(--cyan);}
+  .flash button{
+    background:none; border:none; color:inherit; opacity:.6; cursor:pointer; font-size:1rem; line-height:1;
+  }
+  .flash button:hover{opacity:1;}
+
+  /* ---------- Generic content card (non-dashboard pages) ---------- */
+  .card{
+    background:var(--panel); border:1px solid var(--border-subtle); border-radius:14px;
+    padding:1.75rem;
+    box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 0 40px -20px rgba(45,212,238,.14);
+  }
+
+  /* ---------- Generic table (covers <table class="table"> and bare <table> inside a .card) ---------- */
+  .table, .card table{width:100%; border-collapse:collapse; font-size:.88rem;}
+  .table th, .card table th{
+    text-align:left; font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-muted); font-weight:500;
+    padding:.5rem .75rem .6rem 0; border-bottom:1px solid var(--border-subtle);
+  }
+  .table td, .card table td{
+    padding:.7rem .75rem .7rem 0; border-bottom:1px solid var(--border-subtle); color:var(--text);
+  }
+  .table tbody tr:last-child td, .card table tbody tr:last-child td{border-bottom:none;}
+  .table tbody tr:hover td, .card table tbody tr:hover td{background:rgba(255,255,255,.025);}
+  .table th.num, .table td.num, .card table th.num, .card table td.num{text-align:right;}
+  .empty-state{font-style:italic; color:var(--text-muted); text-align:center; padding:1.5rem 0;}
+
+  /* ---------- Buttons (outside auth-card) ---------- */
+  .btn, .btn-sm{
+    display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+    padding:.55rem .95rem; border-radius:9px; border:1px solid var(--border-subtle);
+    background:transparent; color:var(--text); font-size:.85rem; font-weight:600;
+    text-decoration:none; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .btn:not(.btn-primary):hover, .btn-sm:not(.btn-primary):hover{
+    border-color:var(--cyan); background:rgba(45,212,238,.06);
+  }
+  .btn-sm{padding:.32rem .65rem; font-size:.76rem; border-radius:7px;}
+  .btn.btn-primary, .btn-primary{text-decoration:none; border:none;}
+  .btn.btn-danger, .btn-danger{background:var(--red); color:#08080b; border:none; text-decoration:none;}
+  .btn-danger:hover{filter:brightness(1.1);}
+  .btn.btn-secondary, .btn-secondary{border-color:var(--border-subtle); background:var(--panel-alt);}
+  .btn.btn-secondary:hover, .btn-secondary:hover{border-color:var(--purple); background:rgba(184,102,255,.08);}
+  .page-header-actions .btn-primary, .form-actions .btn-primary{width:auto;}
+
+  /* ---------- Forms (outside auth-card) — covers .form-control and bare inputs/selects
+     inside a .card, since not every form template applies the class consistently ---------- */
+  .form-group{margin-bottom:1.1rem;}
+  .form-group label, .card label{
+    display:block; font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-muted); margin-bottom:.4rem;
+  }
+  .form-control, .card input[type="text"], .card input[type="email"], .card input[type="number"],
+  .card input[type="password"], .card input:not([type]), .card select, .card textarea{
+    width:100%; background:var(--panel-alt); border:1px solid var(--border-subtle);
+    color:var(--text); border-radius:9px; padding:.62rem .8rem; font-size:.9rem;
+    font-family:var(--sans); outline:none; transition:border-color .15s, box-shadow .15s;
+    margin-bottom:.9rem;
+  }
+  .form-control:focus, .card input:focus, .card select:focus, .card textarea:focus{
+    border-color:var(--cyan); box-shadow:0 0 0 3px rgba(45,212,238,.18);
+  }
+  .form-row{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  .form-actions{display:flex; gap:.75rem; margin-top:1.5rem;}
+  .form-hint{display:block; font-size:.74rem; color:var(--text-muted); margin-top:-.6rem; margin-bottom:.9rem;}
+
+  /* ---------- Filter bars (GET forms sitting in a .card) ---------- */
+  .filter-form{display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;}
+  .filter-form .form-group{flex:1; min-width:160px; margin-bottom:0;}
+  .filter-form .form-actions{margin-top:0;}
+
+  /* ---------- Status badges (small pills inside table cells) ---------- */
+  .badge{
+    display:inline-flex; align-items:center; font-family:var(--mono); font-size:.68rem;
+    letter-spacing:.05em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px;
+    border:1px solid currentColor; box-shadow:0 0 8px -3px currentColor;
+  }
+  .badge-danger{color:var(--red);}
+  .badge-warning{color:var(--orange);}
+  .badge-info{color:var(--cyan);}
+  .badge-success{color:var(--green);}
+
+  /* ---------- Summary cards (severity KPIs above a filtered table) ---------- */
+  .summary-cards{display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;}
+  .summary-card{
+    background:var(--panel); border-radius:14px; padding:1.25rem 1.4rem;
+    border:1px solid color-mix(in srgb, var(--sc-accent) 55%, transparent);
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--sc-accent) 12%, transparent),
+               0 0 28px -14px color-mix(in srgb, var(--sc-accent) 70%, transparent);
+  }
+  .summary-count{
+    font-family:var(--mono); font-size:2rem; font-weight:700; line-height:1;
+    color:var(--sc-accent); margin-bottom:.35rem;
+    text-shadow:0 0 18px color-mix(in srgb, var(--sc-accent) 45%, transparent);
+  }
+  .summary-label{font-size:.8rem; color:var(--text-muted);}
+  .summary-card-danger  { --sc-accent: var(--red); }
+  .summary-card-critical{ --sc-accent: var(--orange); }
+  .summary-card-warning { --sc-accent: var(--yellow); }
+  .summary-card-watch   { --sc-accent: var(--cyan); }
+  @media (max-width:860px){ .summary-cards{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ .summary-cards{grid-template-columns:1fr;} }
+
+  /* ---------- Auth pages (no sidebar) ---------- */
+  .auth-wrap{
+    min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center;
+    padding:2rem 1.25rem;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(184,102,255,.10), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(45,212,238,.08), transparent 40%),
+      var(--bg);
+  }
+  .auth-card{
+    width:100%; max-width:420px; background:var(--panel);
+    border:1px solid var(--card-accent, var(--border-subtle));
+    border-radius:16px; padding:2rem 1.9rem;
+    box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 0 40px -12px var(--card-glow, transparent);
+  }
+  .auth-brand{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem;}
+  .auth-eyebrow{
+    font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--card-accent, var(--cyan)); margin:0 0 .35rem;
+  }
+  .auth-title{font-size:1.4rem; font-weight:700; margin:0 0 .35rem;}
+  .auth-sub{color:var(--text-muted); font-size:.87rem; margin:0 0 1.5rem;}
+
+  .field{margin-bottom:1.1rem;}
+  .field label{
+    display:block; font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-muted); margin-bottom:.4rem;
+  }
+  .field input, .field select{
+    width:100%; background:var(--panel-alt); border:1px solid var(--border-subtle);
+    color:var(--text); border-radius:9px; padding:.62rem .8rem; font-size:.92rem;
+    font-family:var(--sans); outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus, .field select:focus{
+    border-color:var(--card-accent, var(--cyan));
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--card-accent, var(--cyan)) 18%, transparent);
+  }
+  .field-hint{font-size:.74rem; color:var(--text-muted); margin-top:.35rem;}
+  .field select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8a95'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .9rem center;}
+
+  .btn-primary{
+    width:100%; border:none; border-radius:9px; padding:.7rem 1rem; font-size:.92rem;
+    font-weight:600; color:#08080b; cursor:pointer; margin-top:.4rem;
+    background:var(--card-accent, var(--cyan)); transition:filter .15s;
+  }
+  .btn-primary:hover{filter:brightness(1.1);}
+
+  .auth-switch{text-align:center; font-size:.85rem; color:var(--text-muted); margin-top:1.4rem;}
+  .auth-switch a{color:var(--card-accent, var(--cyan)); font-weight:600; text-decoration:none;}
+  .auth-switch a:hover{text-decoration:underline;}
+
+  .status-dot{
+    width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0;
+    box-shadow:0 0 8px var(--green); animation:pulse 2.2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body class="{{ '' if current_user.is_authenticated else 'no-sidebar' }}">
+<div class="app-shell">
+  {% if current_user.is_authenticated %}
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">💊</div>
+      <div class="brand-name">SupplyLink</div>
+    </div>
+    <nav class="nav-group">
+      <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}"><span class="ic">📊</span> Dashboard</a>
+
+      {% if current_user.role in ['admin', 'store_officer'] %}
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('inventory') }}" href="{{ url_for('inventory_list') }}"><span class="ic">📁</span> Inventory</a>
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('supplier') }}" href="{{ url_for('supplier_list') }}"><span class="ic">🚚</span> Suppliers</a>
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('procurement') or request.endpoint and request.endpoint.startswith('po_') }}" href="{{ url_for('procurement_plan_list') }}"><span class="ic">📅</span> Procurement</a>
+      {% endif %}
+
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('requisition') }}" href="{{ url_for('requisition_list') }}"><span class="ic">📋</span> Requisitions</a>
+
+      {% if current_user.role in ['admin', 'pharmacist'] %}
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('outpatient') }}" href="{{ url_for('outpatient_list') }}"><span class="ic">💊</span> Outpatient Pharmacy</a>
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('inpatient') or request.endpoint == 'discharge' }}" href="{{ url_for('inpatient_list') }}"><span class="ic">🛏️</span> Inpatient Pharmacy</a>
+      {% endif %}
+
+      <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('report') }}" href="{{ url_for('reports_index') }}"><span class="ic">✅</span> Reports</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        {{ current_user.name }}
+        <span class="role-pill">{{ current_user.role_label }}</span>
+      </div>
+      <a class="nav-link" href="{{ url_for('logout') }}"><span class="ic">🚪</span> Logout</a>
+    </div>
+  </aside>
+  {% endif %}
+
+  <div class="main">
+    {% if current_user.is_authenticated %}
+      <div class="page-header">
+        <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+        <div class="page-header-actions">{% block page_actions %}{% endblock %}</div>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">
+              <span>{{ message }}</span>
+              <button type="button" onclick="this.parentElement.remove()">&times;</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

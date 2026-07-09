@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers{% endblock %}
+
+{% block page_title %}Suppliers{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('supplier_new') }}" class="btn btn-primary">+ Add Supplier</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact Person</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Address</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for supplier in suppliers %}
+            <tr>
+                <td>{{ supplier.name }}</td>
+                <td>{{ supplier.contact_person or "—" }}</td>
+                <td>{{ supplier.phone or "—" }}</td>
+                <td>{{ supplier.email or "—" }}</td>
+                <td>{{ supplier.address or "—" }}</td>
+                <td>
+                    <a href="{{ url_for('supplier_edit', supplier_id=supplier.id) }}" class="btn btn-sm">Edit</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-state">No suppliers added yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

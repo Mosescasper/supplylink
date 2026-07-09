@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Register — SupplyLink{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card" style="--card-accent:var(--purple); --card-glow:rgba(184,102,255,.18);">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}" style="margin-bottom:1.25rem;">
+            <span>{{ message }}</span>
+            <button type="button" onclick="this.parentElement.remove()">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="auth-brand">
+      <div class="brand-icon">💊</div>
+      <div class="brand-name">SupplyLink</div>
+    </div>
+
+    <p class="auth-eyebrow"><span class="status-dot" style="display:inline-block; margin-right:.4rem; vertical-align:middle; background:var(--purple); box-shadow:0 0 8px var(--purple);"></span>NEW OPERATOR</p>
+    <h1 class="auth-title">Create an account</h1>
+    <p class="auth-sub">Register for SupplyLink Hospital Inventory.</p>
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" required placeholder="Jane Wanjiru">
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required placeholder="you@hospital.org">
+      </div>
+
+      <div class="field">
+        <label for="department_id">Department</label>
+        <select id="department_id" name="department_id">
+          <option value="">— None / not applicable —</option>
+          {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role" name="role" required>
+          <option value="" disabled selected>Select a role</option>
+          <option value="admin">Admin</option>
+          <option value="store_officer">Store Officer</option>
+          <option value="pharmacist">Pharmacist</option>
+        </select>
+        <p class="field-hint">Only Admin, Store Officer, and Pharmacist accounts can be created.</p>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="6" placeholder="••••••••">
+      </div>
+
+      <div class="field">
+        <label for="confirm_password">Confirm password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="••••••••">
+      </div>
+
+      <button type="submit" class="btn-primary">Create account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+  </div>
+</div>
+{% endblock %}

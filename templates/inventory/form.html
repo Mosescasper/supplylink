@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit Item" if item else "Add Item" }}{% endblock %}
+
+{% block page_title %}{{ "Edit Item" if item else "Add New Item" }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inventory_list') }}" class="btn">Back to Inventory</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{{ url_for('inventory_edit', item_id=item.id) if item else url_for('inventory_new') }}">
+
+        <div class="form-group">
+            <label for="sku">SKU</label>
+            <input type="text" id="sku" name="sku" class="form-control"
+                   value="{{ item.sku if item else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Item Name</label>
+            <input type="text" id="name" name="name" class="form-control"
+                   value="{{ item.name if item else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="category_id">Category</label>
+            <select id="category_id" name="category_id" class="form-control">
+                <option value="">-- Select Category --</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}"
+                    {% if item and item.category_id == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="supplier_id">Supplier</label>
+            <select id="supplier_id" name="supplier_id" class="form-control">
+                <option value="">-- Select Supplier --</option>
+                {% for supplier in suppliers %}
+                <option value="{{ supplier.id }}"
+                    {% if item and item.supplier_id == supplier.id %}selected{% endif %}>
+                    {{ supplier.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="unit_of_issue">Unit of Issue</label>
+                <input type="text" id="unit_of_issue" name="unit_of_issue" class="form-control"
+                       value="{{ item.unit_of_issue if item else 'Units' }}" placeholder="e.g. Box, Vial, Units">
+            </div>
+
+            <div class="form-group">
+                <label for="unit_cost">Unit Cost (KES)</label>
+                <input type="number" id="unit_cost" name="unit_cost" class="form-control"
+                       step="0.01" min="0" value="{{ item.unit_cost if item else 0 }}">
+            </div>
+        </div>
+
+        {% if item %}
+        <div class="form-group">
+            <label for="manual_reorder_level">Reorder Level (manual override)</label>
+            <input type="number" id="manual_reorder_level" name="manual_reorder_level" class="form-control"
+                   step="0.01" min="0" value="{{ item.reorder_level }}">
+            <small class="form-hint">
+                Leave as-is to keep the current reorder level. Changing this value marks it as a manual override.
+            </small>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label for="reorder_level">Reorder Level</label>
+            <input type="number" id="reorder_level" name="reorder_level" class="form-control"
+                   step="0.01" min="0" value="0">
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {{ "Save Changes" if item else "Add Item" }}
+            </button>
+            <a href="{{ url_for('inventory_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

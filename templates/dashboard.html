@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block page_actions %}
+<span class="dash-role-badge dash-role-badge--{{ role }}">{{ role.replace('_', ' ') }}</span>
+<span class="dash-readout">Readout as of {{ today.strftime('%d %b %Y') }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="dash">
+
+  {# ================= ROW 1 — CORE KPIs ================= #}
+  <div class="kpi-row">
+    <a href="{{ url_for('inventory_list') }}" class="kpi-card kpi-card--cyan">
+      <div class="kpi-top">
+        <span class="kpi-label">Total Items</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.total_items }}</div>
+      <div class="kpi-sub">SKUs tracked</div>
+    </a>
+
+    <a href="{{ url_for('expiry_alerts') }}" class="kpi-card kpi-card--red">
+      <div class="kpi-top">
+        <span class="kpi-label">Near Expiry</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.near_expiry_count }}</div>
+      <div class="kpi-sub">batches, &lt;6 mo</div>
+    </a>
+
+    <a href="{{ url_for('inventory_list') }}" class="kpi-card kpi-card--orange">
+      <div class="kpi-top">
+        <span class="kpi-label">Low Stock</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.low_stock_count }}</div>
+      <div class="kpi-sub">at or below reorder</div>
+    </a>
+
+    <a href="{{ url_for('po_list') }}" class="kpi-card kpi-card--purple">
+      <div class="kpi-top">
+        <span class="kpi-label">Open POs</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.open_purchase_orders }}</div>
+      <div class="kpi-sub">draft / sent</div>
+    </a>
+
+    <a href="{{ url_for('requisition_list') }}" class="kpi-card kpi-card--magenta">
+      <div class="kpi-top">
+        <span class="kpi-label">Pending S11s</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.pending_requisitions }}</div>
+      <div class="kpi-sub">awaiting approval</div>
+    </a>
+  </div>
+
+  {# ================= ROW 2 — STOCK VALUE ================= #}
+  <div class="value-row">
+    <div class="kpi-card kpi-card--yellow kpi-card--wide">
+      <div class="kpi-top">
+        <span class="kpi-label">Total Stock Value</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(kpis.total_stock_value) }}</div>
+      <div class="kpi-sub">
+        {% if role == 'store_officer' %}across Drug Store &amp; Holding
+        {% elif role == 'pharmacist' %}across Holding, Outpatient &amp; Inpatient Pharmacy
+        {% else %}across all locations{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ================= ROW 3 — ALERT PANELS ================= #}
+  <div class="panel-row">
+    <div class="panel panel--red">
+      <div class="panel-header">
+        <h2 class="panel-title">Expiry Alert Panel</h2>
+        <span class="panel-tag">FEFO &middot; &lt;6 MONTHS</span>
+      </div>
+      {% if near_expiry_batches %}
+      <table class="panel-table">
+        <thead>
+          <tr><th>Item</th><th>Batch</th><th>Location</th><th>Expiry</th><th>Qty</th></tr>
+        </thead>
+        <tbody>
+          {% for b in near_expiry_batches %}
+          <tr>
+            <td>{{ b.item.name }}</td>
+            <td>{{ b.batch_number }}</td>
+            <td>{{ b.location }}</td>
+            <td>{{ b.expiry_date.strftime('%d %b %Y') }}</td>
+            <td>{{ b.quantity_remaining|int }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">No batches expiring within the alert window.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel panel--orange">
+      <div class="panel-header">
+        <h2 class="panel-title">Low-Stock Alert Panel</h2>
+        <span class="panel-tag">AT / BELOW REORDER LEVEL</span>
+      </div>
+      {% if low_stock_items %}
+      <table class="panel-table">
+        <thead>
+          <tr><th>Item</th><th>SKU</th><th>On Hand</th><th>Reorder Level</th><th>Suggested Order</th></tr>
+        </thead>
+        <tbody>
+          {% for i in low_stock_items %}
+          <tr>
+            <td>{{ i.name }}</td>
+            <td>{{ i.sku }}</td>
+            <td>{{ i.quantity_on_hand|int }}</td>
+            <td>{{ i.reorder_level|int }}</td>
+            <td>{{ i.suggested_order_quantity|int }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">All items are above their reorder level.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ================= ROW 4 — RECENT MOVEMENT ================= #}
+  <div class="panel panel--full panel--slate">
+    <div class="panel-header">
+      <h2 class="panel-title">Recent Stock Movement</h2>
+      <span class="panel-tag">LAST 10 ENTRIES</span>
+    </div>
+    {% if recent_movements %}
+    <table class="panel-table">
+      <thead>
+        <tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>From</th><th>To</th><th>Reference</th></tr>
+      </thead>
+      <tbody>
+        {% for m in recent_movements %}
+        <tr>
+          <td>{{ m.created_at.strftime('%d %b, %H:%M') }}</td>
+          <td>{{ m.item.name }}</td>
+          <td><span class="movement-tag movement-tag--{{ m.movement_type }}">{{ m.movement_type }}</span></td>
+          <td>{{ m.quantity|int }}</td>
+          <td>{{ m.from_location or '—' }}</td>
+          <td>{{ m.to_location or '—' }}</td>
+          <td>{{ m.reference or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="panel-empty">No stock movements recorded yet.</p>
+    {% endif %}
+  </div>
+
+  {# ================= ROLE-SPECIFIC SECTIONS ================= #}
+
+  {% if role == 'admin' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">System Overview</h2>
+
+    <div class="kpi-row kpi-row--four">
+      {% for loc, val in location_values.items() %}
+      <div class="kpi-card kpi-card--green kpi-card--compact">
+        <div class="kpi-top">
+          <span class="kpi-label">{{ loc }}</span>
+          <span class="kpi-dot"></span>
+        </div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(val) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--purple">
+        <div class="panel-header">
+          <h2 class="panel-title">Procurement Variance</h2>
+          <span class="panel-tag">PLANNED VS. ACTUAL</span>
+        </div>
+        {% if variance_flags %}
+        <table class="panel-table">
+          <thead><tr><th>Item</th><th>Period</th><th>Planned</th><th>Actual</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for v in variance_flags %}
+            <tr>
+              <td>{{ v.item.name }}</td>
+              <td>{{ v.period }}</td>
+              <td>{{ v.planned_quantity|int }}</td>
+              <td>{{ v.actual_issued|int }}</td>
+              <td class="{{ 'variance-neg' if v.variance < 0 else 'variance-pos' }}">{{ v.variance|int }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No monitoring records for this period yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--magenta">
+        <div class="panel-header">
+          <h2 class="panel-title">Recent Purchase Orders</h2>
+          <span class="panel-tag">ALL SUPPLIERS</span>
+        </div>
+        {% if recent_pos %}
+        <table class="panel-table">
+          <thead><tr><th>PO No.</th><th>Supplier</th><th>Status</th><th>Date</th><th>Value</th></tr></thead>
+          <tbody>
+            {% for po in recent_pos %}
+            <tr>
+              <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+              <td>{{ po.supplier.name }}</td>
+              <td><span class="status-tag status-tag--{{ po.status|lower }}">{{ po.status }}</span></td>
+              <td>{{ po.order_date.strftime('%d %b %Y') if po.order_date else '—' }}</td>
+              <td>{{ currency }} {{ "{:,.0f}".format(po.total_value) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No purchase orders yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if role == 'store_officer' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">Store Operations</h2>
+
+    <div class="kpi-row kpi-row--two">
+      <div class="kpi-card kpi-card--cyan kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Drug Store Balance</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(drug_store_value) }}</div>
+      </div>
+      <div class="kpi-card kpi-card--green kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Holding Balance</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(holding_value) }}</div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--purple">
+        <div class="panel-header">
+          <h2 class="panel-title">Incoming Purchase Orders</h2>
+          <span class="panel-tag">DRAFT / SENT</span>
+        </div>
+        {% if incoming_pos %}
+        <table class="panel-table">
+          <thead><tr><th>PO No.</th><th>Supplier</th><th>Status</th><th>Expected</th></tr></thead>
+          <tbody>
+            {% for po in incoming_pos %}
+            <tr>
+              <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+              <td>{{ po.supplier.name }}</td>
+              <td><span class="status-tag status-tag--{{ po.status|lower }}">{{ po.status }}</span></td>
+              <td>{{ po.expected_date.strftime('%d %b %Y') if po.expected_date else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No purchase orders in transit.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--magenta">
+        <div class="panel-header">
+          <h2 class="panel-title">Requisitions to Action</h2>
+          <span class="panel-tag">DRUG STORE / HOLDING</span>
+        </div>
+        {% if pending_requisitions_to_action %}
+        <table class="panel-table">
+          <thead><tr><th>S11 No.</th><th>Department</th><th>Issue Point</th><th>Raised</th></tr></thead>
+          <tbody>
+            {% for r in pending_requisitions_to_action %}
+            <tr>
+              <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+              <td>{{ r.department.name }}</td>
+              <td>{{ r.issue_point }}</td>
+              <td>{{ r.created_at.strftime('%d %b') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">Nothing pending your approval.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel panel--full panel--slate">
+      <div class="panel-header">
+        <h2 class="panel-title">Recent Transfers to Holding</h2>
+        <span class="panel-tag">STOCK CONTROL CARD</span>
+      </div>
+      {% if transfers_to_holding %}
+      <table class="panel-table">
+        <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Reference</th></tr></thead>
+        <tbody>
+          {% for m in transfers_to_holding %}
+          <tr>
+            <td>{{ m.created_at.strftime('%d %b, %H:%M') }}</td>
+            <td>{{ m.item.name }}</td>
+            <td>{{ m.quantity|int }}</td>
+            <td>{{ m.reference or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">No transfers to Holding recorded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if role == 'pharmacist' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">Pharmacy Operations</h2>
+
+    <div class="kpi-row kpi-row--three">
+      <div class="kpi-card kpi-card--green kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Holding Balance</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(holding_value) }}</div>
+      </div>
+      <div class="kpi-card kpi-card--cyan kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Outpatient Pharmacy</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(outpatient_value) }}</div>
+      </div>
+      <div class="kpi-card kpi-card--purple kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Inpatient Pharmacy</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(inpatient_value) }}</div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--magenta">
+        <div class="panel-header">
+          <h2 class="panel-title">My Requisitions</h2>
+          <span class="panel-tag">RAISED BY ME</span>
+        </div>
+        {% if my_requisitions %}
+        <table class="panel-table">
+          <thead><tr><th>S11 No.</th><th>Issue Point</th><th>Status</th><th>Raised</th></tr></thead>
+          <tbody>
+            {% for r in my_requisitions %}
+            <tr>
+              <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+              <td>{{ r.issue_point }}</td>
+              <td><span class="status-tag status-tag--{{ r.status|lower }}">{{ r.status }}</span></td>
+              <td>{{ r.created_at.strftime('%d %b') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">You haven't raised any requisitions yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--orange">
+        <div class="panel-header">
+          <h2 class="panel-title">Recent Discharge Refunds</h2>
+          <span class="panel-tag">UNDEPLETED &times; UNIT COST</span>
+        </div>
+        {% if recent_discharge_refunds %}
+        <table class="panel-table">
+          <thead><tr><th>Patient</th><th>Item</th><th>Outcome</th><th>Refund</th></tr></thead>
+          <tbody>
+            {% for r in recent_discharge_refunds %}
+            <tr>
+              <td>{{ r.patient.name }}</td>
+              <td>{{ r.item.name }}</td>
+              <td><span class="status-tag status-tag--{{ 'refunded' if r.outcome == 'Refund Processed' else 'issued' }}">{{ r.outcome }}</span></td>
+              <td>{{ currency }} {{ "{:,.0f}".format(r.refund_amount) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No discharge refunds recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

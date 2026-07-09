@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Discharge — {{ patient.name }}{% endblock %}
+{% block page_title %}Discharge Review — {{ patient.name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inpatient_list') }}" class="btn btn-secondary">Back to Inpatient Pharmacy</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card patient-summary">
+    <div class="summary-item">
+        <span class="summary-label">Patient</span>
+        <span class="summary-value">{{ patient.name }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">IP Number</span>
+        <span class="summary-value">{{ patient.ip_op_number }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">Last Prescription Date</span>
+        <span class="summary-value">{{ prescription.date.strftime("%Y-%m-%d") if prescription.date else "-" }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">Prescriber</span>
+        <span class="summary-value">{{ prescription.prescriber_name }}</span>
+    </div>
+</div>
+
+{% if lines %}
+<form method="POST" class="card">
+    <p class="field-hint">
+        For each medicine issued today, enter the quantity that remains <strong>undepleted</strong>.
+        Leave at <strong>0</strong> if the patient used the full amount issued — that line will
+        generate a continuation prescription instead of a refund.
+    </p>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Medicine</th>
+                <th>Qty Issued Today</th>
+                <th>Unit Cost ({{ currency }})</th>
+                <th>Qty Undepleted</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+            <tr>
+                <td>{{ line.medicine_name or (line.item.name if line.item else "-") }}</td>
+                <td>{{ line.quantity_dispensed }}</td>
+                <td>{{ "%.2f"|format(line.item.unit_cost) if line.item else "-" }}</td>
+                <td>
+                    <input type="number" name="undepleted_{{ line.id }}"
+                           min="0" max="{{ line.quantity_dispensed }}" step="0.01" value="0">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Process Discharge</button>
+    </div>
+</form>
+{% else %}
+<div class="card empty-state">
+    No medicines were issued to this patient today under the last prescription.
+    Discharge can proceed without a refund calculation.
+</div>
+{% endif %}
+
+{% endblock %}

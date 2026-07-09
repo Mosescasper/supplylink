@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Inpatient Pharmacy{% endblock %}
+{% block page_title %}Inpatient Pharmacy{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inpatient_dispense') }}" class="btn btn-primary">+ Dispense to Inpatient</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>IP Number</th>
+                <th>Prescriber</th>
+                <th>Designation</th>
+                <th>Lines</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rx in prescriptions %}
+            <tr>
+                <td>{{ rx.date.strftime("%Y-%m-%d") if rx.date else "-" }}</td>
+                <td>{{ rx.patient.name }}</td>
+                <td>{{ rx.patient.ip_op_number }}</td>
+                <td>{{ rx.prescriber_name }}</td>
+                <td>{{ rx.designation or "-" }}</td>
+                <td>{{ rx.lines|length }}</td>
+                <td>
+                    {% set fully_dispensed = rx.lines|selectattr("dispensed")|list|length == rx.lines|length %}
+                    <span class="status-badge {{ 'status-success' if fully_dispensed else 'status-warning' }}">
+                        {{ "Dispensed" if fully_dispensed else "Partial" }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('discharge', patient_id=rx.patient.id) }}" class="btn btn-sm btn-secondary">Discharge</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="empty-state">No inpatient prescriptions recorded yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

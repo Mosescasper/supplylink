@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Dispense — Outpatient{% endblock %}
+
+{% block page_title %}Dispense Prescription — Outpatient{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('outpatient_list') }}" class="btn">Back to Outpatient Pharmacy</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <p class="form-hint">
+        The patient must already be registered in the hospital system with a valid OP number.
+        Dispensing is blocked automatically if the number entered below is not found.
+    </p>
+
+    <form method="POST" action="{{ url_for('outpatient_dispense') }}">
+
+        <div class="form-group">
+            <label for="ip_op_number">OP Number</label>
+            <input type="text" id="ip_op_number" name="ip_op_number" class="form-control" required
+                   placeholder="e.g. OP-2026-04521">
+        </div>
+
+        <h3 class="section-heading">Prescriber Details</h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="prescriber_name">Prescriber Name</label>
+                <input type="text" id="prescriber_name" name="prescriber_name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="registration_number">Registration Number</label>
+                <input type="text" id="registration_number" name="registration_number" class="form-control"
+                       placeholder="MPDC / COC No.">
+            </div>
+
+            <div class="form-group">
+                <label for="designation">Designation</label>
+                <input type="text" id="designation" name="designation" class="form-control">
+            </div>
+        </div>
+
+        <h3 class="section-heading">Medicine Lines <span class="section-hint">(up to 7)</span></h3>
+
+        <table class="table" id="rx-lines-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Dose</th>
+                    <th>Route</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                    <th>Quantity</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="rx-lines-body">
+                <tr class="rx-line-row">
+                    <td>
+                        <select name="item_id[]" class="form-control" required>
+                            <option value="">-- Select Item --</option>
+                            {% for item in items %}
+                            <option value="{{ item.id }}">{{ item.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" name="dose[]" class="form-control" placeholder="e.g. 500mg"></td>
+                    <td><input type="text" name="route[]" class="form-control" placeholder="e.g. PO"></td>
+                    <td><input type="text" name="frequency[]" class="form-control" placeholder="e.g. TDS"></td>
+                    <td><input type="text" name="duration[]" class="form-control" placeholder="e.g. 5 days"></td>
+                    <td><input type="number" name="quantity[]" class="form-control" step="0.01" min="0" required></td>
+                    <td><button type="button" class="btn btn-sm remove-line-btn">Remove</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" id="add-line-btn" class="btn">+ Add Line</button>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Dispense</button>
+            <a href="{{ url_for('outpatient_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+
+<template id="rx-line-template">
+    <tr class="rx-line-row">
+        <td>
+            <select name="item_id[]" class="form-control" required>
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td><input type="text" name="dose[]" class="form-control" placeholder="e.g. 500mg"></td>
+        <td><input type="text" name="route[]" class="form-control" placeholder="e.g. PO"></td>
+        <td><input type="text" name="frequency[]" class="form-control" placeholder="e.g. TDS"></td>
+        <td><input type="text" name="duration[]" class="form-control" placeholder="e.g. 5 days"></td>
+        <td><input type="number" name="quantity[]" class="form-control" step="0.01" min="0" required></td>
+        <td><button type="button" class="btn btn-sm remove-line-btn">Remove</button></td>
+    </tr>
+</template>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var MAX_LINES = 7;
+    var linesBody = document.getElementById("rx-lines-body");
+    var addLineBtn = document.getElementById("add-line-btn");
+    var lineTemplate = document.getElementById("rx-line-template");
+
+    function updateAddButton() {
+        var count = linesBody.querySelectorAll(".rx-line-row").length;
+        addLineBtn.disabled = count >= MAX_LINES;
+        addLineBtn.textContent = count >= MAX_LINES ? "Maximum 7 lines reached" : "+ Add Line";
+    }
+
+    addLineBtn.addEventListener("click", function () {
+        if (linesBody.querySelectorAll(".rx-line-row").length >= MAX_LINES) return;
+        var clone = lineTemplate.content.cloneNode(true);
+        linesBody.appendChild(clone);
+        updateAddButton();
+    });
+
+    linesBody.addEventListener("click", function (event) {
+        if (event.target.classList.contains("remove-line-btn")) {
+            var rows = linesBody.querySelectorAll(".rx-line-row");
+            if (rows.length > 1) {
+                event.target.closest(".rx-line-row").remove();
+                updateAddButton();
+            }
+        }
+    });
+
+    updateAddButton();
+});
+</script>
+{% endblock %}

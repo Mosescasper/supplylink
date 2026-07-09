@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Dispense — Inpatient Pharmacy{% endblock %}
+{% block page_title %}Dispense to Inpatient{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inpatient_list') }}" class="btn btn-secondary">Back to list</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="card" id="inpatient-dispense-form">
+
+    <div class="form-section">
+        <h2>Patient</h2>
+        <div class="form-row">
+            <label for="ip_op_number">IP Number</label>
+            <input type="text" id="ip_op_number" name="ip_op_number" required
+                   placeholder="e.g. IP-2026-00042" autofocus>
+            <p class="field-hint">Patient must already be registered in the hospital system. Dispensing is blocked otherwise.</p>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Prescriber</h2>
+        <div class="form-row">
+            <label for="prescriber_name">Prescriber Name</label>
+            <input type="text" id="prescriber_name" name="prescriber_name" required>
+        </div>
+        <div class="form-row">
+            <label for="registration_number">Registration Number</label>
+            <input type="text" id="registration_number" name="registration_number">
+        </div>
+        <div class="form-row">
+            <label for="designation">Designation</label>
+            <input type="text" id="designation" name="designation" placeholder="e.g. Medical Officer">
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Medicines</h2>
+        <table class="data-table" id="line-items-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="line-items-body">
+                <tr class="line-item-row">
+                    <td>
+                        <select name="item_id[]" required>
+                            <option value="">Select item…</option>
+                            {% for item in items %}
+                            <option value="{{ item.id }}">{{ item.name }} ({{ item.sku }})</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="number" name="quantity[]" min="0.01" step="0.01" required></td>
+                    <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" id="add-row" class="btn btn-secondary btn-sm">+ Add medicine</button>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Dispense &amp; Deduct Stock</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    var itemOptionsHTML = document.querySelector('select[name="item_id[]"]').innerHTML;
+    var tbody = document.getElementById("line-items-body");
+
+    document.getElementById("add-row").addEventListener("click", function () {
+        var row = document.createElement("tr");
+        row.className = "line-item-row";
+        row.innerHTML =
+            '<td><select name="item_id[]" required>' + itemOptionsHTML + '</select></td>' +
+            '<td><input type="number" name="quantity[]" min="0.01" step="0.01" required></td>' +
+            '<td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>';
+        tbody.appendChild(row);
+    });
+
+    tbody.addEventListener("click", function (e) {
+        if (e.target.classList.contains("remove-row")) {
+            var rows = tbody.querySelectorAll(".line-item-row");
+            if (rows.length > 1) {
+                e.target.closest("tr").remove();
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

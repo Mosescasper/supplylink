@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Expiry Alerts{% endblock %}
+
+{% block page_title %}Expiry Alerts{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('expiry_alerts_export', q=request.args.get('q',''), location=request.args.get('location',''), urgency=request.args.get('urgency','')) }}" class="btn">Export CSV</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="summary-cards">
+    <div class="summary-card summary-card-danger">
+        <div class="summary-count">{{ summary.expired_count }}</div>
+        <div class="summary-label">Expired</div>
+    </div>
+    <div class="summary-card summary-card-critical">
+        <div class="summary-count">{{ summary.critical_count }}</div>
+        <div class="summary-label">Critical (&le; 30 days)</div>
+    </div>
+    <div class="summary-card summary-card-warning">
+        <div class="summary-count">{{ summary.warning_count }}</div>
+        <div class="summary-label">Warning (&le; 90 days)</div>
+    </div>
+    <div class="summary-card summary-card-watch">
+        <div class="summary-count">{{ summary.watch_count }}</div>
+        <div class="summary-label">Watch</div>
+    </div>
+</div>
+
+<div class="card filter-card">
+    <form method="GET" action="{{ url_for('expiry_alerts') }}" class="filter-form">
+        <div class="form-group">
+            <label for="q">Search</label>
+            <input type="text" id="q" name="q" class="form-control"
+                   placeholder="Item name or batch number" value="{{ request.args.get('q', '') }}">
+        </div>
+
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" id="location" name="location" class="form-control"
+                   placeholder="e.g. Drug Store" value="{{ request.args.get('location', '') }}">
+        </div>
+
+        <div class="form-group">
+            <label for="urgency">Urgency</label>
+            <select id="urgency" name="urgency" class="form-control">
+                <option value="" {% if request.args.get('urgency', '') == '' %}selected{% endif %}>All</option>
+                <option value="expired" {% if request.args.get('urgency') == 'expired' %}selected{% endif %}>Expired</option>
+                <option value="critical" {% if request.args.get('urgency') == 'critical' %}selected{% endif %}>Critical</option>
+                <option value="warning" {% if request.args.get('urgency') == 'warning' %}selected{% endif %}>Warning</option>
+                <option value="watch" {% if request.args.get('urgency') == 'watch' %}selected{% endif %}>Watch</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('expiry_alerts') }}" class="btn">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Batch Number</th>
+                <th>Location</th>
+                <th>Expiry Date</th>
+                <th>Days Remaining</th>
+                <th>Qty Remaining</th>
+                <th>Value at Risk ({{ currency }})</th>
+                <th>Urgency</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in alerts %}
+            <tr>
+                <td><a href="{{ url_for('inventory_detail', item_id=batch.item_id) }}">{{ batch.item.name }}</a></td>
+                <td>{{ batch.batch_number }}</td>
+                <td>{{ batch.location }}</td>
+                <td>{{ batch.expiry_date.strftime('%d %b %Y') }}</td>
+                <td>{{ batch.days_remaining }}</td>
+                <td>{{ batch.quantity_remaining }}</td>
+                <td>{{ "%.2f"|format(batch.quantity_remaining|float * batch.item.unit_cost|float) }}</td>
+                <td>
+                    {% if batch.days_remaining < 0 %}
+                        <span class="badge badge-danger">Expired</span>
+                    {% elif batch.days_remaining <= 30 %}
+                        <span class="badge badge-danger">Critical</span>
+                    {% elif batch.days_remaining <= 90 %}
+                        <span class="badge badge-warning">Warning</span>
+                    {% else %}
+                        <span class="badge badge-info">Watch</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="empty-state">No expiry alerts found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

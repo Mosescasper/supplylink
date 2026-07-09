@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Batches{% endblock %}
+
+{% block page_title %}Batches{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('batches_export', q=request.args.get('q',''), location=request.args.get('location',''), expiry=request.args.get('expiry','')) }}" class="btn">Export CSV</a>
+<a href="{{ url_for('batch_receive') }}" class="btn btn-primary">Receive Stock</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card filter-card">
+    <form method="GET" action="{{ url_for('inventory_batches') }}" class="filter-form">
+        <div class="form-group">
+            <label for="q">Search</label>
+            <input type="text" id="q" name="q" class="form-control"
+                   placeholder="Item name or batch number" value="{{ request.args.get('q', '') }}">
+        </div>
+
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" id="location" name="location" class="form-control"
+                   placeholder="e.g. Drug Store" value="{{ request.args.get('location', '') }}">
+        </div>
+
+        <div class="form-group">
+            <label for="expiry">Expiry Status</label>
+            <select id="expiry" name="expiry" class="form-control">
+                <option value="" {% if request.args.get('expiry', '') == '' %}selected{% endif %}>All</option>
+                <option value="near" {% if request.args.get('expiry') == 'near' %}selected{% endif %}>Near Expiry</option>
+                <option value="expired" {% if request.args.get('expiry') == 'expired' %}selected{% endif %}>Expired</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('inventory_batches') }}" class="btn">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Batch Number</th>
+                <th>Location</th>
+                <th>Expiry Date</th>
+                <th>Qty Received</th>
+                <th>Qty Remaining</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in batches %}
+            <tr>
+                <td><a href="{{ url_for('inventory_detail', item_id=batch.item_id) }}">{{ batch.item.name }}</a></td>
+                <td>{{ batch.batch_number }}</td>
+                <td>{{ batch.location }}</td>
+                <td>{{ batch.expiry_date.strftime('%d %b %Y') }}</td>
+                <td>{{ batch.quantity_received }}</td>
+                <td>{{ batch.quantity_remaining }}</td>
+                <td>
+                    {% if batch.expiry_date < today %}
+                        <span class="badge badge-danger">Expired</span>
+                    {% elif batch.expiry_date <= expiry_alert_cutoff %}
+                        <span class="badge badge-warning">Near Expiry</span>
+                    {% else %}
+                        <span class="badge badge-success">OK</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No batches found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

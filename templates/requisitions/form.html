@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}New Requisition{% endblock %}
+
+{% block page_title %}New Requisition (S11){% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('requisition_list') }}" class="btn">Back to Requisitions</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{{ url_for('requisition_new') }}">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="department_id">Requesting Department</label>
+                <select id="department_id" name="department_id" class="form-control" required>
+                    <option value="">-- Select Department --</option>
+                    {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="issue_point">Issue Point</label>
+                <select id="issue_point" name="issue_point" class="form-control" required>
+                    <option value="">-- Select Issue Point --</option>
+                    {% for location in locations %}
+                    <option value="{{ location }}">{{ location }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Requisition Lines</h3>
+
+        <table class="table" id="req-lines-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity Required</th>
+                    <th>Remarks / Purpose</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="req-lines-body">
+                <tr class="req-line-row">
+                    <td>
+                        <select name="item_id[]" class="form-control" required>
+                            <option value="">-- Select Item --</option>
+                            {% for item in items %}
+                            <option value="{{ item.id }}">{{ item.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
+                    </td>
+                    <td>
+                        <input type="text" name="remarks[]" class="form-control" placeholder="Optional">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm remove-line-btn">Remove</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" id="add-line-btn" class="btn">+ Add Line</button>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Requisition</button>
+            <a href="{{ url_for('requisition_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+
+<template id="req-line-template">
+    <tr class="req-line-row">
+        <td>
+            <select name="item_id[]" class="form-control" required>
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
+        </td>
+        <td>
+            <input type="text" name="remarks[]" class="form-control" placeholder="Optional">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm remove-line-btn">Remove</button>
+        </td>
+    </tr>
+</template>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var linesBody = document.getElementById("req-lines-body");
+    var addLineBtn = document.getElementById("add-line-btn");
+    var lineTemplate = document.getElementById("req-line-template");
+
+    addLineBtn.addEventListener("click", function () {
+        var clone = lineTemplate.content.cloneNode(true);
+        linesBody.appendChild(clone);
+    });
+
+    linesBody.addEventListener("click", function (event) {
+        if (event.target.classList.contains("remove-line-btn")) {
+            var rows = linesBody.querySelectorAll(".req-line-row");
+            if (rows.length > 1) {
+                event.target.closest(".req-line-row").remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

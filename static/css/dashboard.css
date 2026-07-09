@@ -1,0 +1,349 @@
+/* ============================================================================
+   SupplyLink — Dashboard
+   Dark industrial base, neon-signal card borders. Each accent color is a
+   status channel (cyan = volume, red = expiry risk, orange = stock risk,
+   purple = procurement, magenta = approvals, yellow = value, green = healthy)
+   not decoration — reuse the matching color whenever you show that kind of
+   data elsewhere in the app.
+
+   Neon-readout language, shared with the auth pages:
+   dark bg + glowing colored card borders + mono uppercase labels + a
+   pulsing status dot. Every accented surface below carries a persistent
+   glow (not just on hover), and any "live" dot pulses.
+   ========================================================================== */
+
+:root {
+  --dash-bg: #0a0d11;
+  --dash-panel-bg: #0e1319;
+  --dash-panel-bg-2: #10161d;
+  --dash-border-faint: #1c242e;
+  --dash-text: #e7ecf1;
+  --dash-text-muted: #78899b;
+  --dash-text-dim: #4a5a6b;
+
+  --dash-cyan: #2ee6d6;
+  --dash-red: #ff3b5c;
+  --dash-orange: #ff9d2e;
+  --dash-purple: #a855f7;
+  --dash-magenta: #ec4faa;
+  --dash-yellow: #f4d93e;
+  --dash-green: #27e07f;
+
+  --dash-font-mono: "JetBrains Mono", "IBM Plex Mono", "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --dash-font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+.dash {
+  font-family: var(--dash-font-sans);
+  color: var(--dash-text);
+  padding: 8px 0 48px;
+}
+
+/* ---------------------------------- Shared pulse -------------------------- */
+
+@keyframes dash-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+/* ---------------------------------- Header ---------------------------- */
+/* dash-role-badge / dash-readout render inside base.html's own
+   .page-header-actions block, not a wrapper defined here. */
+
+.dash-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--dash-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--dash-border-faint);
+  color: var(--dash-text-muted);
+}
+.dash-role-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px 1px currentColor;
+  animation: dash-pulse 2.2s infinite;
+  flex-shrink: 0;
+}
+.dash-role-badge--admin        { color: var(--dash-yellow); border-color: color-mix(in srgb, var(--dash-yellow) 40%, transparent); }
+.dash-role-badge--store_officer{ color: var(--dash-cyan);   border-color: color-mix(in srgb, var(--dash-cyan) 40%, transparent); }
+.dash-role-badge--pharmacist   { color: var(--dash-magenta);border-color: color-mix(in srgb, var(--dash-magenta) 40%, transparent); }
+
+.dash-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--dash-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dash-text-dim);
+}
+.dash-readout::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dash-green);
+  box-shadow: 0 0 6px 1px var(--dash-green);
+  animation: dash-pulse 2.2s infinite;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------- KPI cards --------------------------- */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.kpi-row--four  { grid-template-columns: repeat(4, 1fr); }
+.kpi-row--three { grid-template-columns: repeat(3, 1fr); }
+.kpi-row--two   { grid-template-columns: repeat(2, 1fr); }
+
+.value-row { margin-bottom: 20px; }
+
+.kpi-card {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--kpi-accent) 10%, transparent), transparent 60%),
+    var(--dash-panel-bg);
+  border: 1px solid color-mix(in srgb, var(--kpi-accent) 55%, transparent);
+  border-radius: 10px;
+  padding: 18px 18px 16px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--kpi-accent) 12%, transparent),
+    0 0 28px -14px color-mix(in srgb, var(--kpi-accent) 70%, transparent);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--kpi-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--kpi-accent) 30%, transparent),
+              0 8px 24px -8px color-mix(in srgb, var(--kpi-accent) 55%, transparent);
+}
+
+.kpi-card--cyan    { --kpi-accent: var(--dash-cyan); }
+.kpi-card--red     { --kpi-accent: var(--dash-red); }
+.kpi-card--orange  { --kpi-accent: var(--dash-orange); }
+.kpi-card--purple  { --kpi-accent: var(--dash-purple); }
+.kpi-card--magenta { --kpi-accent: var(--dash-magenta); }
+.kpi-card--yellow  { --kpi-accent: var(--dash-yellow); }
+.kpi-card--green   { --kpi-accent: var(--dash-green); }
+
+.kpi-card--wide { padding: 20px 22px; }
+.kpi-card--compact { padding: 14px 16px; }
+
+.kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.kpi-label {
+  font-family: var(--dash-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--kpi-accent);
+}
+
+.kpi-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kpi-accent, var(--dash-green));
+  box-shadow: 0 0 8px 1px var(--kpi-accent, var(--dash-green));
+  animation: dash-pulse 2.2s infinite;
+  flex-shrink: 0;
+}
+
+.kpi-value {
+  font-family: var(--dash-font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--kpi-accent);
+  margin-bottom: 6px;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--kpi-accent) 45%, transparent);
+}
+.kpi-value--currency { font-size: 26px; }
+.kpi-card--compact .kpi-value { font-size: 20px; margin-bottom: 2px; }
+
+.kpi-sub {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+}
+
+/* ---------------------------------- Panels ------------------------------ */
+
+.panel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: var(--dash-panel-bg-2);
+  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--dash-border-faint)) 45%, var(--dash-border-faint));
+  border-radius: 10px;
+  padding: 18px 20px 8px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--panel-accent, transparent) 10%, transparent),
+    0 0 32px -16px color-mix(in srgb, var(--panel-accent, transparent) 60%, transparent);
+}
+
+.panel--red     { --panel-accent: var(--dash-red); }
+.panel--orange  { --panel-accent: var(--dash-orange); }
+.panel--purple  { --panel-accent: var(--dash-purple); }
+.panel--magenta { --panel-accent: var(--dash-magenta); }
+.panel--slate   { --panel-accent: #3a4a5c; }
+.panel--full    { margin-bottom: 16px; }
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.panel-tag {
+  font-family: var(--dash-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--panel-accent, var(--dash-text-dim));
+}
+
+.panel-empty {
+  font-style: italic;
+  color: var(--dash-text-muted);
+  font-size: 13px;
+  padding: 4px 0 16px;
+}
+
+/* ---------------------------------- Tables ------------------------------ */
+
+.panel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.panel-table th {
+  text-align: left;
+  font-family: var(--dash-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-text-dim);
+  font-weight: 500;
+  padding: 6px 10px 8px 0;
+  border-bottom: 1px solid var(--dash-border-faint);
+}
+
+.panel-table td {
+  padding: 9px 10px 9px 0;
+  border-bottom: 1px solid var(--dash-border-faint);
+  color: var(--dash-text);
+  white-space: nowrap;
+}
+
+.panel-table tbody tr:last-child td { border-bottom: none; }
+
+.panel-table a {
+  color: var(--panel-accent, var(--dash-cyan));
+  text-decoration: none;
+}
+.panel-table a:hover { text-decoration: underline; }
+
+/* ---------------------------------- Tags --------------------------------- */
+
+.movement-tag, .status-tag {
+  font-family: var(--dash-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 8px -3px currentColor;
+}
+
+.movement-tag--receipt         { color: var(--dash-green); }
+.movement-tag--issue           { color: var(--dash-orange); }
+.movement-tag--transfer        { color: var(--dash-cyan); }
+.movement-tag--adjustment      { color: var(--dash-purple); }
+.movement-tag--refund_reversal { color: var(--dash-magenta); }
+
+.status-tag--draft, .status-tag--pending   { color: var(--dash-yellow); }
+.status-tag--sent, .status-tag--approved   { color: var(--dash-cyan); }
+.status-tag--received, .status-tag--issued { color: var(--dash-green); }
+.status-tag--cancelled, .status-tag--rejected { color: var(--dash-red); }
+.status-tag--refunded { color: var(--dash-orange); }
+
+.variance-neg { color: var(--dash-red); }
+.variance-pos { color: var(--dash-green); }
+
+/* ---------------------------------- Sections ----------------------------- */
+
+.dash-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px dashed var(--dash-border-faint);
+}
+
+.dash-section-title {
+  font-family: var(--dash-font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dash-text-muted);
+  margin: 0 0 16px;
+}
+
+/* ---------------------------------- Responsive --------------------------- */
+
+@media (max-width: 1200px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+  .kpi-row--four { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .dash { padding: 20px 16px 48px; }
+  .kpi-row, .kpi-row--four, .kpi-row--three, .kpi-row--two { grid-template-columns: repeat(2, 1fr); }
+  .panel-row { grid-template-columns: 1fr; }
+  .panel-table { display: block; overflow-x: auto; }
+}
+
+@media (max-width: 520px) {
+  .kpi-row, .kpi-row--four, .kpi-row--three, .kpi-row--two { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-dot, .dash-role-badge::before, .dash-readout::before {
+    animation: none;
+  }
+}

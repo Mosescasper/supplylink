@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders{% endblock %}
+
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('po_new') }}" class="btn btn-primary">+ New Purchase Order</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>PO Number</th>
+                <th>Supplier</th>
+                <th>Status</th>
+                <th>Order Date</th>
+                <th>Expected Date</th>
+                <th>Total Value (KES)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for po in purchase_orders %}
+            <tr>
+                <td>{{ po.po_number }}</td>
+                <td>{{ po.supplier.name }}</td>
+                <td>
+                    {% if po.status == "Draft" %}
+                        <span class="badge badge-info">Draft</span>
+                    {% elif po.status == "Sent" %}
+                        <span class="badge badge-warning">Sent</span>
+                    {% elif po.status == "Received" %}
+                        <span class="badge badge-success">Received</span>
+                    {% elif po.status == "Cancelled" %}
+                        <span class="badge badge-danger">Cancelled</span>
+                    {% endif %}
+                </td>
+                <td>{{ po.order_date.strftime('%d %b %Y') if po.order_date else "—" }}</td>
+                <td>{{ po.expected_date.strftime('%d %b %Y') if po.expected_date else "—" }}</td>
+                <td>{{ "%.2f"|format(po.total_value) }}</td>
+                <td>
+                    <a href="{{ url_for('po_detail', po_id=po.id) }}" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No purchase orders yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

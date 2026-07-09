@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{{ po.po_number }}{% endblock %}
+
+{% block page_title %}Purchase Order {{ po.po_number }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('po_list') }}" class="btn">Back to Purchase Orders</a>
+{% if po.status == "Draft" %}
+    <form method="POST" action="{{ url_for('po_send', po_id=po.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">Mark as Sent</button>
+    </form>
+    <form method="POST" action="{{ url_for('po_cancel', po_id=po.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-danger">Cancel Order</button>
+    </form>
+{% elif po.status == "Sent" %}
+    <a href="{{ url_for('po_receive', po_id=po.id) }}" class="btn btn-primary">Receive Stock</a>
+    <form method="POST" action="{{ url_for('po_cancel', po_id=po.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-danger">Cancel Order</button>
+    </form>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="detail-grid">
+        <div>
+            <span class="detail-label">Supplier</span>
+            <span class="detail-value">{{ po.supplier.name }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                {% if po.status == "Draft" %}
+                    <span class="badge badge-info">Draft</span>
+                {% elif po.status == "Sent" %}
+                    <span class="badge badge-warning">Sent</span>
+                {% elif po.status == "Received" %}
+                    <span class="badge badge-success">Received</span>
+                {% elif po.status == "Cancelled" %}
+                    <span class="badge badge-danger">Cancelled</span>
+                {% endif %}
+            </span>
+        </div>
+        <div>
+            <span class="detail-label">Order Date</span>
+            <span class="detail-value">{{ po.order_date.strftime('%d %b %Y') if po.order_date else "—" }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Expected Date</span>
+            <span class="detail-value">{{ po.expected_date.strftime('%d %b %Y') if po.expected_date else "—" }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Total Value</span>
+            <span class="detail-value">{{ currency }} {{ "%.2f"|format(po.total_value) }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Order Lines</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty Ordered</th>
+                <th>Unit Cost ({{ currency }})</th>
+                <th>Line Total ({{ currency }})</th>
+                <th>Qty Received</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in po.lines %}
+            <tr>
+                <td><a href="{{ url_for('inventory_detail', item_id=line.item_id) }}">{{ line.item.name }}</a></td>
+                <td>{{ line.quantity_ordered }}</td>
+                <td>{{ "%.2f"|format(line.unit_cost) }}</td>
+                <td>{{ "%.2f"|format(line.quantity_ordered|float * line.unit_cost|float) }}</td>
+                <td>{{ line.quantity_received or 0 }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="empty-state">No line items on this order.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

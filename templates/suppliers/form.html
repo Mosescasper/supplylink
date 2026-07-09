@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit Supplier" if supplier else "Add Supplier" }}{% endblock %}
+
+{% block page_title %}{{ "Edit Supplier" if supplier else "Add New Supplier" }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('supplier_list') }}" class="btn">Back to Suppliers</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{{ url_for('supplier_edit', supplier_id=supplier.id) if supplier else url_for('supplier_new') }}">
+
+        <div class="form-group">
+            <label for="name">Supplier Name</label>
+            <input type="text" id="name" name="name" class="form-control"
+                   value="{{ supplier.name if supplier else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="contact_person">Contact Person</label>
+            <input type="text" id="contact_person" name="contact_person" class="form-control"
+                   value="{{ supplier.contact_person if supplier else '' }}">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" name="phone" class="form-control"
+                       value="{{ supplier.phone if supplier else '' }}" placeholder="e.g. 07XX XXX XXX">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control"
+                       value="{{ supplier.email if supplier else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="address">Address</label>
+            <textarea id="address" name="address" class="form-control" rows="3">{{ supplier.address if supplier else '' }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {{ "Save Changes" if supplier else "Add Supplier" }}
+            </button>
+            <a href="{{ url_for('supplier_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

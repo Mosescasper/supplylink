@@ -1,0 +1,68 @@
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <span class="sidebar-brand-icon">💊</span>
+        <span class="sidebar-brand-text">SupplyLink</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}"
+           class="sidebar-link {{ 'active' if request.endpoint == 'dashboard' else '' }}">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-label">Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('inventory_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('inventory_') else '' }}">
+            <span class="sidebar-icon">📦</span>
+            <span class="sidebar-label">Inventory</span>
+        </a>
+
+        <a href="{{ url_for('supplier_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('supplier_') else '' }}">
+            <span class="sidebar-icon">🚚</span>
+            <span class="sidebar-label">Suppliers</span>
+        </a>
+
+        <a href="{{ url_for('procurement_plan_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('procurement_plan') else '' }}">
+            <span class="sidebar-icon">🧮</span>
+            <span class="sidebar-label">Procurement</span>
+        </a>
+        <a href="{{ url_for('po_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('po_') else '' }}">
+            <span class="sidebar-icon">🛒</span>
+            <span class="sidebar-label">Purchase Orders</span>
+        </a>
+        
+        <a href="{{ url_for('requisition_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('requisition_') else '' }}">
+            <span class="sidebar-icon">🧾</span>
+            <span class="sidebar-label">Requisitions</span>
+        </a>
+
+        <a href="{{ url_for('outpatient_dispense') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('outpatient_') else '' }}">
+            <span class="sidebar-icon">💊</span>
+            <span class="sidebar-label">Outpatient Pharmacy</span>
+        </a>
+
+        <a href="{{ url_for('inpatient_dispense') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('inpatient_') else '' }}">
+            <span class="sidebar-icon">🛏️</span>
+            <span class="sidebar-label">Inpatient Pharmacy</span>
+        </a>
+
+        <a href="{{ url_for('reports_index') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('report') else '' }}">
+            <span class="sidebar-icon">📈</span>
+            <span class="sidebar-label">Reports</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <a href="{{ url_for('logout') }}" class="sidebar-link">
+            <span class="sidebar-icon">🚪</span>
+            <span class="sidebar-label">Logout</span>
+        </a>
+    </div>
+</aside>

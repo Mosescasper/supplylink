@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Requisitions{% endblock %}
+
+{% block page_title %}Requisitions (S11){% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('requisition_new') }}" class="btn btn-primary">+ New Requisition</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card filter-card">
+    <form method="GET" action="{{ url_for('requisition_list') }}" class="filter-form">
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status" class="form-control" onchange="this.form.submit()">
+                <option value="" {% if not status %}selected{% endif %}>All</option>
+                <option value="Pending" {% if status == "Pending" %}selected{% endif %}>Pending</option>
+                <option value="Approved" {% if status == "Approved" %}selected{% endif %}>Approved</option>
+                <option value="Issued" {% if status == "Issued" %}selected{% endif %}>Issued</option>
+                <option value="Rejected" {% if status == "Rejected" %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Req Number</th>
+                <th>Department</th>
+                <th>Issue Point</th>
+                <th>Status</th>
+                <th>Requested By</th>
+                <th>Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requisitions %}
+            <tr>
+                <td>{{ req.req_number }}</td>
+                <td>{{ req.department.name }}</td>
+                <td>{{ req.issue_point }}</td>
+                <td>
+                    {% if req.status == "Pending" %}
+                        <span class="badge badge-warning">Pending</span>
+                    {% elif req.status == "Approved" %}
+                        <span class="badge badge-info">Approved</span>
+                    {% elif req.status == "Issued" %}
+                        <span class="badge badge-success">Issued</span>
+                    {% elif req.status == "Rejected" %}
+                        <span class="badge badge-danger">Rejected</span>
+                    {% endif %}
+                </td>
+                <td>{{ req.requested_by.name if req.requested_by else "—" }}</td>
+                <td>{{ req.created_at.strftime('%d %b %Y') if req.created_at else "—" }}</td>
+                <td>
+                    <a href="{{ url_for('requisition_detail', req_id=req.id) }}" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No requisitions found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

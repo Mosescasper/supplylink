@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Reports & Analytics{% endblock %}
+{% block page_title %}🧮 Reports & Analytics{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('reports_index') }}" class="btn btn-secondary">Back to Reports</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports_analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="reports-toolbar">
+  <label>
+    Location
+    <select id="filter-location">
+      <option value="">All locations</option>
+      <option value="Drug Store">Drug Store</option>
+      <option value="Holding">Holding</option>
+      <option value="Outpatient Pharmacy">Outpatient Pharmacy</option>
+      <option value="Inpatient Pharmacy">Inpatient Pharmacy</option>
+    </select>
+  </label>
+  <label>
+    Period (monitoring)
+    <input type="month" id="filter-period">
+  </label>
+  <label>
+    From
+    <input type="date" id="filter-start">
+  </label>
+  <label>
+    To
+    <input type="date" id="filter-end">
+  </label>
+  <button id="apply-filters" class="btn btn-primary">Apply</button>
+</div>
+
+<div class="charts-grid">
+
+  <div class="chart-card">
+    <h3>Stock Value Trend</h3>
+    <canvas id="chart-stock-value-trend"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h3>Procurement Plan vs. Actual Consumption</h3>
+    <canvas id="chart-procurement-vs-consumption"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h3>Expiry Timeline</h3>
+    <canvas id="chart-expiry-timeline"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h3>Stock by Location</h3>
+    <canvas id="chart-stock-by-location"></canvas>
+  </div>
+
+  <div class="chart-card chart-card-wide">
+    <h3>Top-Moving Items</h3>
+    <canvas id="chart-top-moving-items"></canvas>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="{{ url_for('static', filename='js/reports_charts.js') }}"></script>
+{% endblock %}

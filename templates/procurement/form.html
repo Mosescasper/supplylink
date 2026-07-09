@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Add Procurement Plan Line{% endblock %}
+
+{% block page_title %}Add Procurement Plan Line{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('procurement_plan_list') }}" class="btn">Back to Procurement Plan</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{{ url_for('procurement_plan_new') }}">
+
+        <div class="form-group">
+            <label for="item_id">Item</label>
+            <select id="item_id" name="item_id" class="form-control" required>
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="year">Year</label>
+                <input type="number" id="year" name="year" class="form-control"
+                       value="{{ default_year }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="planned_quantity">Planned Quantity (annual)</label>
+                <input type="number" id="planned_quantity" name="planned_quantity" class="form-control"
+                       step="0.01" min="0" required>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Plan Line</button>
+            <a href="{{ url_for('procurement_plan_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

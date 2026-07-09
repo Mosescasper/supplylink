@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Receive {{ po.po_number }}{% endblock %}
+
+{% block page_title %}Receive Stock — {{ po.po_number }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('po_detail', po_id=po.id) }}" class="btn">Back to Order</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <p class="form-hint">
+        Enter the batch number, expiry date, and quantity received for each line.
+        Leave a line blank to skip it — it will not be added to Drug Store stock.
+    </p>
+
+    <form method="POST" action="{{ url_for('po_receive', po_id=po.id) }}">
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty Ordered</th>
+                    <th>Batch Number</th>
+                    <th>Expiry Date</th>
+                    <th>Qty Received</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in po.lines %}
+                <tr>
+                    <td>{{ line.item.name }}</td>
+                    <td>{{ line.quantity_ordered }}</td>
+                    <td>
+                        <input type="text" name="batch_number_{{ line.id }}" class="form-control">
+                    </td>
+                    <td>
+                        <input type="date" name="expiry_date_{{ line.id }}" class="form-control">
+                    </td>
+                    <td>
+                        <input type="number" name="quantity_received_{{ line.id }}" class="form-control"
+                               step="0.01" min="0" value="{{ line.quantity_ordered }}">
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="empty-state">No line items on this order.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Confirm Receipt into Drug Store</button>
+            <a href="{{ url_for('po_detail', po_id=po.id) }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

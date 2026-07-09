@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}New Purchase Order{% endblock %}
+
+{% block page_title %}New Purchase Order{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('po_list') }}" class="btn">Back to Purchase Orders</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{{ url_for('po_new') }}">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="supplier_id">Supplier</label>
+                <select id="supplier_id" name="supplier_id" class="form-control" required>
+                    <option value="">-- Select Supplier --</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="expected_date">Expected Delivery Date</label>
+                <input type="date" id="expected_date" name="expected_date" class="form-control">
+            </div>
+        </div>
+
+        <h3 class="section-heading">Order Lines</h3>
+
+        <table class="table" id="po-lines-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Unit Cost (KES)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="po-lines-body">
+                <tr class="po-line-row">
+                    <td>
+                        <select name="item_id[]" class="form-control" required>
+                            <option value="">-- Select Item --</option>
+                            {% for item in items %}
+                            <option value="{{ item.id }}">{{ item.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="quantity[]" class="form-control" step="0.01" min="0" required>
+                    </td>
+                    <td>
+                        <input type="number" name="unit_cost[]" class="form-control" step="0.01" min="0">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm remove-line-btn">Remove</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" id="add-line-btn" class="btn">+ Add Line</button>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Purchase Order</button>
+            <a href="{{ url_for('po_list') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+
+<template id="po-line-template">
+    <tr class="po-line-row">
+        <td>
+            <select name="item_id[]" class="form-control" required>
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="quantity[]" class="form-control" step="0.01" min="0" required>
+        </td>
+        <td>
+            <input type="number" name="unit_cost[]" class="form-control" step="0.01" min="0">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm remove-line-btn">Remove</button>
+        </td>
+    </tr>
+</template>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var linesBody = document.getElementById("po-lines-body");
+    var addLineBtn = document.getElementById("add-line-btn");
+    var lineTemplate = document.getElementById("po-line-template");
+
+    addLineBtn.addEventListener("click", function () {
+        var clone = lineTemplate.content.cloneNode(true);
+        linesBody.appendChild(clone);
+    });
+
+    linesBody.addEventListener("click", function (event) {
+        if (event.target.classList.contains("remove-line-btn")) {
+            var rows = linesBody.querySelectorAll(".po-line-row");
+            if (rows.length > 1) {
+                event.target.closest(".po-line-row").remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

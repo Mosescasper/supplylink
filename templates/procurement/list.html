@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Procurement Plan{% endblock %}
+
+{% block page_title %}Procurement Plan — {{ year }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('procurement_plan_new') }}" class="btn btn-primary">+ Add Plan Line</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card filter-card">
+    <form method="GET" action="{{ url_for('procurement_plan_list') }}" class="filter-form">
+        <div class="form-group">
+            <label for="year">Year</label>
+            <input type="number" id="year" name="year" class="form-control" value="{{ year }}">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">View Year</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Year</th>
+                <th>Planned Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in plans %}
+            <tr>
+                <td><a href="{{ url_for('inventory_detail', item_id=plan.item_id) }}">{{ plan.item.name }}</a></td>
+                <td>{{ plan.item.category.name if plan.item.category else "—" }}</td>
+                <td>{{ plan.year }}</td>
+                <td>{{ plan.planned_quantity }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="empty-state">No procurement plan lines for {{ year }} yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

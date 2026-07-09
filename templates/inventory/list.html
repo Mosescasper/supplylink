@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inventory_new') }}" class="btn btn-primary">+ Add Item</a>
+<a href="{{ url_for('report_inventory_valuation') }}" class="btn">Export CSV</a>
+{% endblock %}
+
+{% block content %}
+
+<form method="get" class="card" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px;">
+  <div style="flex:2; min-width:200px; margin-bottom:0;">
+    <label for="q">Search</label>
+    <input type="text" id="q" name="q" placeholder="SKU or item name&hellip;" value="{{ request.args.get('q', '') }}" style="margin-bottom:0;">
+  </div>
+
+  <div style="flex:1; min-width:160px; margin-bottom:0;">
+    <label for="category">Category</label>
+    <select id="category" name="category" style="margin-bottom:0;">
+      <option value="">All categories</option>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {{ 'selected' if request.args.get('category')|string == cat.id|string else '' }}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="flex:1; min-width:160px; margin-bottom:0;">
+    <label for="status">Stock status</label>
+    <select id="status" name="status" style="margin-bottom:0;">
+      <option value="">All items</option>
+      <option value="low" {{ 'selected' if request.args.get('status') == 'low' else '' }}>Low stock only</option>
+      <option value="ok" {{ 'selected' if request.args.get('status') == 'ok' else '' }}>Above reorder level</option>
+    </select>
+  </div>
+
+  <div style="margin-bottom:0;">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </div>
+</form>
+
+<div class="card" style="padding:0; overflow-x:auto;">
+  {% if items %}
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Item Name</th>
+        <th>Category</th>
+        <th>Supplier</th>
+        <th>Unit</th>
+        <th class="num">Unit Cost</th>
+        <th class="num">On Hand</th>
+        <th class="num">Reorder Level</th>
+        <th class="num">Avg. Monthly Use</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.sku }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.category.name if item.category else '&mdash;' }}</td>
+        <td>{{ item.supplier.name if item.supplier else '&mdash;' }}</td>
+        <td>{{ item.unit_of_issue }}</td>
+        <td class="num">{{ currency }} {{ "{:,.2f}".format(item.unit_cost) }}</td>
+        <td class="num">{{ item.quantity_on_hand|int }}</td>
+        <td class="num">{{ item.reorder_level|int }}</td>
+        <td class="num">{{ "{:,.1f}".format(item.avg_monthly_consumption) if item.avg_monthly_consumption else '&mdash;' }}</td>
+        <td>
+          {% if item.quantity_on_hand <= item.reorder_level %}
+          <span class="badge badge-danger">LOW STOCK</span>
+          {% else %}
+          <span class="badge badge-success">OK</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          <a href="{{ url_for('inventory_view', item_id=item.id) }}" class="btn" style="padding:5px 10px; font-size:12px;">View</a>
+          <a href="{{ url_for('inventory_edit', item_id=item.id) }}" class="btn" style="padding:5px 10px; font-size:12px;">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="padding:20px; color: var(--text-muted); font-style: italic;">No items found. Try adjusting your filters, or add a new item to get started.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

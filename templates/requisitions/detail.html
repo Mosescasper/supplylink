@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}{{ req.req_number }}{% endblock %}
+
+{% block page_title %}Requisition {{ req.req_number }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('requisition_list') }}" class="btn">Back to Requisitions</a>
+
+{% if req.status == "Pending" %}
+    <form method="POST" action="{{ url_for('requisition_approve', req_id=req.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">Approve</button>
+    </form>
+    <form method="POST" action="{{ url_for('requisition_reject', req_id=req.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-danger">Reject</button>
+    </form>
+{% elif req.status == "Approved" %}
+    <form method="POST" action="{{ url_for('requisition_issue', req_id=req.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">Issue Stock</button>
+    </form>
+{% elif req.status == "Issued" and not req.received_by_id %}
+    <form method="POST" action="{{ url_for('requisition_receive', req_id=req.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">Confirm Receipt</button>
+    </form>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="detail-grid">
+        <div>
+            <span class="detail-label">Department</span>
+            <span class="detail-value">{{ req.department.name }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Issue Point</span>
+            <span class="detail-value">{{ req.issue_point }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                {% if req.status == "Pending" %}
+                    <span class="badge badge-warning">Pending</span>
+                {% elif req.status == "Approved" %}
+                    <span class="badge badge-info">Approved</span>
+                {% elif req.status == "Issued" %}
+                    <span class="badge badge-success">Issued</span>
+                {% elif req.status == "Rejected" %}
+                    <span class="badge badge-danger">Rejected</span>
+                {% endif %}
+            </span>
+        </div>
+        <div>
+            <span class="detail-label">Date</span>
+            <span class="detail-value">{{ req.created_at.strftime('%d %b %Y') if req.created_at else "—" }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Approval Chain</h3>
+    <div class="approval-chain">
+        <div class="approval-step {{ 'completed' if req.requested_by else '' }}">
+            <span class="approval-role">Requisition Officer</span>
+            <span class="approval-name">{{ req.requested_by.name if req.requested_by else "—" }}</span>
+        </div>
+        <div class="approval-step {{ 'completed' if req.approved_by else '' }}">
+            <span class="approval-role">Approved By</span>
+            <span class="approval-name">{{ req.approved_by.name if req.approved_by else "—" }}</span>
+        </div>
+        <div class="approval-step {{ 'completed' if req.issued_by else '' }}">
+            <span class="approval-role">Issued By</span>
+            <span class="approval-name">{{ req.issued_by.name if req.issued_by else "—" }}</span>
+        </div>
+        <div class="approval-step {{ 'completed' if req.received_by else '' }}">
+            <span class="approval-role">Received By</span>
+            <span class="approval-name">{{ req.received_by.name if req.received_by else "—" }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Requisition Lines</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Code No.</th>
+                <th>Item</th>
+                <th>Unit of Issue</th>
+                <th>Qty Required</th>
+                <th>Qty Issued</th>
+                <th>Value ({{ currency }})</th>
+                <th>Remarks / Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in req.lines %}
+            <tr>
+                <td>{{ line.item.sku }}</td>
+                <td><a href="{{ url_for('inventory_detail', item_id=line.item_id) }}">{{ line.item.name }}</a></td>
+                <td>{{ line.item.unit_of_issue }}</td>
+                <td>{{ line.quantity_required }}</td>
+                <td>{{ line.quantity_issued or 0 }}</td>
+                <td>{{ "%.2f"|format((line.quantity_issued or line.quantity_required)|float * line.item.unit_cost|float) }}</td>
+                <td>{{ line.remarks or "—" }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No line items on this requisition.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

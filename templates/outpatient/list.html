@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Outpatient Pharmacy{% endblock %}
+
+{% block page_title %}Outpatient Pharmacy{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('outpatient_dispense') }}" class="btn btn-primary">+ Dispense Prescription</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>OP Number</th>
+                <th>Date</th>
+                <th>Prescriber</th>
+                <th>Designation</th>
+                <th>Lines</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prescription in prescriptions %}
+            <tr>
+                <td>{{ prescription.patient.name }}</td>
+                <td>{{ prescription.patient.ip_op_number }}</td>
+                <td>{{ prescription.date.strftime('%d %b %Y') if prescription.date else "—" }}</td>
+                <td>{{ prescription.prescriber_name }}</td>
+                <td>{{ prescription.designation or "—" }}</td>
+                <td>{{ prescription.lines|length }}</td>
+                <td>
+                    {% set all_dispensed = prescription.lines|selectattr("dispensed")|list|length == prescription.lines|length %}
+                    {% if prescription.lines|length > 0 and all_dispensed %}
+                        <span class="badge badge-success">Fully Dispensed</span>
+                    {% else %}
+                        <span class="badge badge-warning">Partial / Pending</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No outpatient prescriptions yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
