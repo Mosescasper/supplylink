@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Register Patient{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Register New Patient</h1>
+</div>
+
+<div class="card">
+    <form method="POST" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="name">Patient Name *</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="ip_op_number">IP/OP Number *</label>
+                <input type="text" id="ip_op_number" name="ip_op_number" class="form-control" required
+                       placeholder="e.g. OP-2026-04521 or IP-2026-00042">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="patient_type">Patient Type *</label>
+                <select id="patient_type" name="patient_type" class="form-control" required>
+                    <option value="Outpatient">Outpatient</option>
+                    <option value="Inpatient">Inpatient</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender" class="form-control">
+                    <option value="">-- Select --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="age">Age</label>
+                <input type="number" id="age" name="age" class="form-control" min="0">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="weight">Weight (kg)</label>
+                <input type="number" id="weight" name="weight" class="form-control" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+                <label for="height">Height (cm)</label>
+                <input type="number" id="height" name="height" class="form-control" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+                <label for="contact">Contact</label>
+                <input type="text" id="contact" name="contact" class="form-control" placeholder="Phone number">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="clinic_ward_unit">Clinic / Ward / Unit</label>
+            <input type="text" id="clinic_ward_unit" name="clinic_ward_unit" class="form-control"
+                   placeholder="e.g. Maternity Ward, OPD Clinic 2">
+        </div>
+
+        <div class="form-group">
+            <label for="drug_allergies">Known Drug Allergies</label>
+            <textarea id="drug_allergies" name="drug_allergies" class="form-control" rows="3"
+                      placeholder="List any known allergies, or leave blank if none"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Register Patient</button>
+            <a href="{{ url_for('patient_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #3fcf5f;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    max-width: 720px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #ccc;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    padding: 0.75rem;
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3fcf5f;
+    background: #262626;
+}
+
+textarea.form-control {
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn-secondary {
+    background: #333;
+    color: #ccc;
+    border: 1px solid #444;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

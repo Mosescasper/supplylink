@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}My Patient Activity{% endblock %}
+{% block page_title %}🩺 My Patient Activity{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('reports_index') }}" class="btn btn-secondary">Back to Reports</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports_analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="reports-toolbar">
+  {% if doctors %}
+  <label>
+    Doctor
+    <select id="filter-doctor">
+      <option value="">All doctors</option>
+      {% for doc in doctors %}
+      <option value="{{ doc.id }}" {{ 'selected' if selected_doctor_id == doc.id }}>{{ doc.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <label>
+    Months
+    <select id="filter-months">
+      <option value="3">Last 3 months</option>
+      <option value="6" selected>Last 6 months</option>
+      <option value="12">Last 12 months</option>
+    </select>
+  </label>
+  <button id="apply-filters" class="btn btn-primary">Apply</button>
+</div>
+
+<div class="summary-cards">
+  <div class="summary-card summary-card-watch">
+    <div class="summary-count" id="kpi-total">—</div>
+    <div class="summary-label">Prescriptions Written</div>
+  </div>
+  <div class="summary-card summary-card-warning">
+    <div class="summary-count" id="kpi-dispensed">—</div>
+    <div class="summary-label">Fully Dispensed</div>
+  </div>
+  <div class="summary-card summary-card-critical">
+    <div class="summary-count" id="kpi-completion">—</div>
+    <div class="summary-label">Completion Rate</div>
+  </div>
+</div>
+
+<div class="charts-grid">
+
+  <div class="chart-card">
+    <h3>Patients Seen</h3>
+    <canvas id="chart-patients-seen"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h3>Prescriptions Written</h3>
+    <canvas id="chart-prescriptions-written"></canvas>
+  </div>
+
+  <div class="chart-card chart-card-wide">
+    <h3>Prescription Status Breakdown</h3>
+    <canvas id="chart-status-breakdown"></canvas>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="{{ url_for('static', filename='js/reports_doctor_charts.js') }}"></script>
+{% endblock %}

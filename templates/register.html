@@ -49,11 +49,11 @@
         <label for="role">Role</label>
         <select id="role" name="role" required>
           <option value="" disabled selected>Select a role</option>
-          <option value="admin">Admin</option>
-          <option value="store_officer">Store Officer</option>
-          <option value="pharmacist">Pharmacist</option>
+          {% for r in roles %}
+            <option value="{{ r }}">{{ r.replace('_', ' ')|title }}</option>
+          {% endfor %}
         </select>
-        <p class="field-hint">Only Admin, Store Officer, and Pharmacist accounts can be created.</p>
+        <p class="field-hint">Select the account type that matches your role at the hospital.</p>
       </div>
 
       <div class="field">

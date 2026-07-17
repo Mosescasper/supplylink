@@ -25,12 +25,13 @@
         <tbody>
             {% for supplier in suppliers %}
             <tr>
-                <td>{{ supplier.name }}</td>
+                <td><a href="{{ url_for('supplier_detail', supplier_id=supplier.id) }}">{{ supplier.name }}</a></td>
                 <td>{{ supplier.contact_person or "—" }}</td>
                 <td>{{ supplier.phone or "—" }}</td>
                 <td>{{ supplier.email or "—" }}</td>
                 <td>{{ supplier.address or "—" }}</td>
                 <td>
+                    <a href="{{ url_for('supplier_detail', supplier_id=supplier.id) }}" class="btn btn-sm">View</a>
                     <a href="{{ url_for('supplier_edit', supplier_id=supplier.id) }}" class="btn btn-sm">Edit</a>
                 </td>
             </tr>

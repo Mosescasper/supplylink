@@ -23,6 +23,14 @@
             <span class="sidebar-label">Suppliers</span>
         </a>
 
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('hospital_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('hospital_') else '' }}">
+            <span class="sidebar-icon">🏥</span>
+            <span class="sidebar-label">Hospitals</span>
+        </a>
+        {% endif %}
+
         <a href="{{ url_for('procurement_plan_list') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('procurement_plan') else '' }}">
             <span class="sidebar-icon">🧮</span>
@@ -33,12 +41,40 @@
             <span class="sidebar-icon">🛒</span>
             <span class="sidebar-label">Purchase Orders</span>
         </a>
-        
+
         <a href="{{ url_for('requisition_list') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('requisition_') else '' }}">
             <span class="sidebar-icon">🧾</span>
             <span class="sidebar-label">Requisitions</span>
         </a>
+
+        <a href="{{ url_for('patient_list') }}"
+           class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('patient') else '' }}">
+            <span class="sidebar-icon">🧑‍⚕️</span>
+            <span class="sidebar-label">Patients</span>
+        </a>
+
+        {% if current_user.role in ('admin', 'doctor') %}
+        <a href="{{ url_for('prescription_new') }}"
+           class="sidebar-link {{ 'active' if request.endpoint == 'prescription_new' else '' }}">
+            <span class="sidebar-icon">📝</span>
+            <span class="sidebar-label">Write Prescription</span>
+        </a>
+
+        <a href="{{ url_for('prescriptions_mine') }}"
+           class="sidebar-link {{ 'active' if request.endpoint == 'prescriptions_mine' else '' }}">
+            <span class="sidebar-icon">📋</span>
+            <span class="sidebar-label">My Prescriptions</span>
+        </a>
+        {% endif %}
+
+        {% if current_user.role in ('admin', 'pharmacist') %}
+        <a href="{{ url_for('prescriptions_pending') }}"
+           class="sidebar-link {{ 'active' if request.endpoint == 'prescriptions_pending' else '' }}">
+            <span class="sidebar-icon">⏳</span>
+            <span class="sidebar-label">Pharmacy Queue</span>
+        </a>
+        {% endif %}
 
         <a href="{{ url_for('outpatient_dispense') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('outpatient_') else '' }}">

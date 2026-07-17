@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Prescription — {{ prescription.patient.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>Prescription for {{ prescription.patient.name }}</h1>
+        <p class="page-subtitle">
+            <code>{{ prescription.patient.ip_op_number }}</code>
+            · Dr. {{ prescription.prescriber_name }}{% if prescription.designation %} ({{ prescription.designation }}){% endif %}
+            · {{ prescription.date.strftime("%d %b %Y") if prescription.date else "—" }}
+        </p>
+    </div>
+    <div class="page-header-actions">
+        {% if prescription.status != "Dispensed" and current_user.role in ('admin', 'pharmacist') %}
+        <a href="{{ url_for('prescription_dispense', prescription_id=prescription.id) }}" class="btn btn-primary">Dispense</a>
+        {% endif %}
+        <a href="{{ url_for('patient_detail', patient_id=prescription.patient.id) }}" class="btn">Back to Patient</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="status-row">
+        {% if prescription.status == "Dispensed" %}
+        <span class="badge badge-success">Dispensed</span>
+        {% elif prescription.status == "Partially Dispensed" %}
+        <span class="badge badge-warning">Partially Dispensed</span>
+        {% else %}
+        <span class="badge badge-pending">Pending</span>
+        {% endif %}
+        {% if prescription.registration_number %}
+        <span class="reg-number">Reg. No. {{ prescription.registration_number }}</span>
+        {% endif %}
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Dose</th>
+                <th>Route</th>
+                <th>Frequency</th>
+                <th>Duration</th>
+                <th>Prescribed</th>
+                <th>Dispensed</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in prescription.lines %}
+            <tr>
+                <td><strong>{{ line.medicine_name }}</strong></td>
+                <td>{{ line.dose or "—" }}</td>
+                <td>{{ line.route or "—" }}</td>
+                <td>{{ line.frequency or "—" }}</td>
+                <td>{{ line.duration or "—" }}</td>
+                <td>{{ line.quantity_prescribed or 0 }}</td>
+                <td>
+                    {{ line.quantity_dispensed or 0 }}
+                    {% if line.dispensed %}<span class="line-done">✓</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.page-header-content h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.7rem;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.page-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.reg-number {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(63, 207, 95, 0.15);
+    color: #3fcf5f;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-pending {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+}
+
+.table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #3fcf5f;
+    border-bottom: 2px solid #333;
+    font-size: 0.82rem;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #292929;
+    font-size: 0.9rem;
+}
+
+.line-done {
+    color: #3fcf5f;
+    margin-left: 0.4rem;
+}
+
+.btn {
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    text-decoration: none;
+    display: inline-block;
+    background: #333;
+    color: #ccc;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+code {
+    background: #222;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

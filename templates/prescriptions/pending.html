@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Prescriptions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Pharmacy Queue</h1>
+    <p class="page-subtitle">Prescriptions written by doctors, waiting to be dispensed</p>
+</div>
+
+<div class="card">
+    {% if prescriptions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>IP/OP Number</th>
+                <th>Prescriber</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rx in prescriptions %}
+            <tr>
+                <td>{{ rx.date.strftime("%d %b %Y") if rx.date else "—" }}</td>
+                <td><strong>{{ rx.patient.name }}</strong></td>
+                <td><code>{{ rx.patient.ip_op_number }}</code></td>
+                <td>Dr. {{ rx.prescriber_name }}</td>
+                <td>
+                    {% if rx.status == "Partially Dispensed" %}
+                    <span class="badge badge-warning">Partially Dispensed</span>
+                    {% else %}
+                    <span class="badge badge-pending">Pending</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    <a href="{{ url_for('prescription_detail', prescription_id=rx.id) }}" class="btn btn-sm btn-outline">View</a>
+                    <a href="{{ url_for('prescription_dispense', prescription_id=rx.id) }}" class="btn btn-sm btn-primary">Dispense</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">✅</div>
+        <h3>Queue is empty</h3>
+        <p>No prescriptions are waiting to be dispensed right now.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 2rem;
+    color: #3fcf5f;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+}
+
+.table th {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #3fcf5f;
+    border-bottom: 2px solid #333;
+    font-size: 0.85rem;
+}
+
+.table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #292929;
+}
+
+.table tbody tr:hover {
+    background: #202020;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-pending {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #3fcf5f;
+    border: 1px solid #3fcf5f;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+code {
+    background: #222;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: #ccc;
+}
+
+.empty-state p {
+    color: #999;
+}
+</style>
+{% endblock %}

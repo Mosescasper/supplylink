@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Hospitals{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>Hospitals</h1>
+        <p class="page-subtitle">Manage hospital locations and information</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="{{ url_for('hospital_new') }}" class="btn btn-primary">
+            <span class="btn-icon">➕</span>
+            <span class="btn-label">Add Hospital</span>
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    {% if hospitals %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Address</th>
+                    <th>Contact Person</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hospital in hospitals %}
+                <tr>
+                    <td><strong>{{ hospital.name }}</strong></td>
+                    <td><code>{{ hospital.code }}</code></td>
+                    <td>{{ hospital.address or "—" }}</td>
+                    <td>{{ hospital.contact_person or "—" }}</td>
+                    <td>{{ hospital.phone or "—" }}</td>
+                    <td>{{ hospital.email or "—" }}</td>
+                    <td>
+                        {% if hospital.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <a href="{{ url_for('hospital_edit', hospital_id=hospital.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">🏥</div>
+        <h3>No hospitals yet</h3>
+        <p>Start by adding your first hospital location.</p>
+        <a href="{{ url_for('hospital_new') }}" class="btn btn-primary">Add Hospital</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header-content h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 2rem;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.page-header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #00d4ff;
+    color: #000;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #00d4ff;
+    border: 1px solid #00d4ff;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+}
+
+.table thead {
+    border-bottom: 2px solid #333;
+}
+
+.table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #00d4ff;
+}
+
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid #333;
+}
+
+.table tbody tr:hover {
+    background: #222;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #10b981;
+    color: white;
+}
+
+.badge-secondary {
+    background: #666;
+    color: white;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: #ccc;
+}
+
+.empty-state p {
+    color: #999;
+    margin-bottom: 1.5rem;
+}
+
+code {
+    background: #222;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

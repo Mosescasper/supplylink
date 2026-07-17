@@ -15,6 +15,7 @@
     </form>
 {% elif po.status == "Sent" %}
     <a href="{{ url_for('po_receive', po_id=po.id) }}" class="btn btn-primary">Receive Stock</a>
+    <a href="{{ url_for('delivery_new', po_id=po.id) }}" class="btn btn-primary">Record Delivery</a>
     <form method="POST" action="{{ url_for('po_cancel', po_id=po.id) }}" class="inline-form">
         <button type="submit" class="btn btn-danger">Cancel Order</button>
     </form>
@@ -82,6 +83,46 @@
             {% else %}
             <tr>
                 <td colspan="5" class="empty-state">No line items on this order.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Deliveries</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Delivery No.</th>
+                <th>Delivery Date</th>
+                <th>Delivery Note No.</th>
+                <th>Status</th>
+                <th>Total Value ({{ currency }})</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for delivery in po.deliveries|sort(attribute="delivery_date", reverse=True) %}
+            <tr>
+                <td>{{ delivery.delivery_number }}</td>
+                <td>{{ delivery.delivery_date.strftime('%d %b %Y') if delivery.delivery_date else "—" }}</td>
+                <td>{{ delivery.delivery_note_number or "—" }}</td>
+                <td>
+                    {% if delivery.status == "Received" %}
+                        <span class="badge badge-success">Received</span>
+                    {% elif delivery.status == "Partially Received" %}
+                        <span class="badge badge-warning">Partially Received</span>
+                    {% elif delivery.status == "Rejected" %}
+                        <span class="badge badge-danger">Rejected</span>
+                    {% endif %}
+                </td>
+                <td>{{ "%.2f"|format(delivery.total_value) }}</td>
+                <td><a href="{{ url_for('delivery_detail', delivery_id=delivery.id) }}">View</a></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-state">No deliveries recorded against this order yet.</td>
             </tr>
             {% endfor %}
         </tbody>

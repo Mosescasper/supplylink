@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery {{ delivery.delivery_number }}{% endblock %}
+
+{% block page_title %}Delivery {{ delivery.delivery_number }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('po_detail', po_id=delivery.purchase_order_id) }}" class="btn">Back to Order</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <p class="form-hint">
+        Against Purchase Order
+        <a href="{{ url_for('po_detail', po_id=delivery.purchase_order_id) }}">{{ delivery.purchase_order.po_number }}</a>
+    </p>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Supplier</th>
+                <td>{{ delivery.supplier.name }}</td>
+            </tr>
+            <tr>
+                <th>Delivery Note / Invoice No.</th>
+                <td>{{ delivery.delivery_note_number or "—" }}</td>
+            </tr>
+            <tr>
+                <th>Delivery Date</th>
+                <td>{{ delivery.delivery_date.strftime("%d %b %Y") if delivery.delivery_date else "—" }}</td>
+            </tr>
+            <tr>
+                <th>Received By</th>
+                <td>{{ delivery.received_by.name if delivery.received_by else "—" }}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td><span class="badge badge-{{ 'success' if delivery.status == 'Received' else 'warning' }}">{{ delivery.status }}</span></td>
+            </tr>
+            <tr>
+                <th>Total Value</th>
+                <td>KES {{ "%.2f"|format(delivery.total_value) }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Items Delivered</h3>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Batch Number</th>
+                <th>Expiry Date</th>
+                <th>Qty Delivered</th>
+                <th>Unit Cost (KES)</th>
+                <th>Line Total (KES)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in delivery.lines %}
+            <tr>
+                <td>{{ line.item.name if line.item else "—" }}</td>
+                <td>{{ line.batch_number }}</td>
+                <td>{{ line.expiry_date.strftime("%d %b %Y") if line.expiry_date else "—" }}</td>
+                <td>{{ line.quantity_delivered }}</td>
+                <td>{{ "%.2f"|format(line.unit_price) }}</td>
+                <td>{{ "%.2f"|format(line.line_total) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-state">No line items recorded.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="form-actions">
+        <a href="{{ url_for('po_detail', po_id=delivery.purchase_order_id) }}" class="btn">Back to Purchase Order</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,3 +1,5 @@
+from hashlib import new
+
 from dateutil.relativedelta import relativedelta
 import csv
 import io
@@ -18,10 +20,13 @@ from config import Config
 from extensions import db, login_manager
 from models import (
     Department, User, Category, Supplier, Item, Batch, StockMovement,
-    PurchaseOrder, PurchaseOrderLine, ProcurementPlan, MonitoringRecord,
+    PurchaseOrder, PurchaseOrderLine, Delivery, DeliveryLineItem,
+    ProcurementPlan, MonitoringRecord,
     Requisition, RequisitionLine, Patient, Prescription, PrescriptionLine,
-    DischargeRefund, LOCATIONS
+    DischargeRefund, SupplierItem, LOCATIONS, Hospital, Prescriber
 )
+from apis.admin import admin_bp
+from apis.hospital import hospital_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -30,9 +35,26 @@ db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
 
+app.register_blueprint(admin_bp)
+app.register_blueprint(hospital_bp)
+
+with app.app_context():
+    db.create_all()
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+# Inject hospital info into all templates (letterhead/contact)
+@app.context_processor
+def inject_hospital_info():
+    return dict(
+        hospital_name=Config.HOSPITAL_NAME,
+        hospital_address=Config.HOSPITAL_ADDRESS,
+        hospital_phone_1=Config.HOSPITAL_PHONE_1,
+        hospital_phone_2=Config.HOSPITAL_PHONE_2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +96,63 @@ def log_movement(item, batch, movement_type, quantity, from_location=None,
     )
     db.session.add(movement)
     return movement
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def role_required(*roles):
+    """Restrict a route to specific User.role values (admin always allowed)."""
+    def decorator(view_fn):
+        @wraps(view_fn)
+        def wrapped(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for("login"))
+            if current_user.role != "admin" and current_user.role not in roles:
+                flash("You don't have permission to do that.", "danger")
+                return redirect(url_for("dashboard"))
+            return view_fn(*args, **kwargs)
+        return wrapped
+    return decorator
+
+
+def next_reference(prefix, model, field):
+    """Generate a simple sequential reference like S11-000123 / PO-000045."""
+    count = db.session.query(model).count() + 1
+    return f"{prefix}-{count:06d}"
+
+
+def log_movement(item, batch, movement_type, quantity, from_location=None,
+                  to_location=None, reference=None):
+    movement = StockMovement(
+        item_id=item.id,
+        batch_id=batch.id,
+        movement_type=movement_type,
+        quantity=quantity,
+        from_location=from_location,
+        to_location=to_location,
+        reference=reference,
+        created_by_id=current_user.id if current_user.is_authenticated else None,
+    )
+    db.session.add(movement)
+    return movement
+
+
+def _get_or_create_own_prescriber(user):
+    """A doctor writing their own prescription shouldn't have to retype
+    their name/registration number/designation every time. Returns the
+    Prescriber record linked to this user's account, creating one on first
+    use if it doesn't exist yet (name pre-filled from the account; reg
+    number and designation left blank for the doctor to fill in later via
+    /prescribers/<id>/edit)."""
+    prescriber = Prescriber.query.filter_by(user_id=user.id).first()
+    if prescriber:
+        return prescriber
+
+    prescriber = Prescriber(name=user.name, user_id=user.id)
+    db.session.add(prescriber)
+    db.session.flush()
+    return prescriber
 
 
 def _csv_response(filename, header, rows):
@@ -119,7 +198,7 @@ def register():
             return render_template("register.html", departments=departments, roles=roles)
 
         if role not in User.ROLES:
-            flash("Please select a valid role (Admin, Store Officer, or Pharmacist).", "danger")
+            flash("Please select a valid role (Admin, Store Officer, Pharmacist, or Doctor).", "danger")
             return render_template("register.html", departments=departments, roles=roles)
 
         if User.query.filter_by(email=email).first():
@@ -173,8 +252,9 @@ def logout():
 ROLE_LOCATION_SCOPE = {
     "store_officer": ["Drug Store", "Holding"],
     "pharmacist": ["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"],
-    # admin falls through to None (unscoped) — the system now only has
-    # these three roles: admin, store_officer, pharmacist.
+    # admin and doctor fall through to None (unscoped). Doctors don't deal
+    # in stock at all — their dashboard branch below shows patient/
+    # prescription info instead of any location-scoped stock figures.
 }
 
 
@@ -225,6 +305,12 @@ def _scoped_recent_movements(locations, limit=10):
 
 
 @app.route("/")
+def home():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    return render_template("home.html")
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -330,6 +416,32 @@ def dashboard():
         context["recent_discharge_refunds"] = (
             DischargeRefund.query.order_by(DischargeRefund.created_at.desc()).limit(6).all()
         )
+# Prescription Fill Rate — same logic as api_doctor_completion_rate,
+        # but hospital-wide rather than scoped to one doctor.
+        total_prescriptions = Prescription.query.count()
+        dispensed_prescriptions = Prescription.query.filter_by(status="Dispensed").count()
+        partial_prescriptions = Prescription.query.filter_by(status="Partially Dispensed").count()
+
+        context["fill_rate"] = (
+            round((dispensed_prescriptions / total_prescriptions) * 100, 1)
+            if total_prescriptions else 0.0
+        )
+        context["dispensed_prescriptions"] = dispensed_prescriptions
+        context["partial_prescriptions"] = partial_prescriptions
+        context["total_prescriptions"] = total_prescriptions
+    elif role == "doctor":
+        context["my_prescriptions"] = (
+            Prescription.query.filter_by(written_by_id=current_user.id)
+            .order_by(Prescription.date.desc())
+            .limit(10)
+            .all()
+        )
+        context["my_pending_count"] = Prescription.query.filter_by(
+            written_by_id=current_user.id, status="Pending"
+        ).count()
+        context["recent_patients"] = (
+            Patient.query.order_by(Patient.id.desc()).limit(6).all()
+        )
 
     return render_template("dashboard.html", **context)
 
@@ -386,8 +498,7 @@ def inventory_new():
 def inventory_detail(item_id):
     item = Item.query.get_or_404(item_id)
     return render_template("inventory/detail.html", item=item, currency=Config.CURRENCY,
-                            expiry_months=Config.EXPIRY_ALERT_MONTHS)
-
+                            expiry_months=Config.EXPIRY_ALERT_MONTHS, today=date.today())
 
 @app.route("/inventory/<int:item_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -721,6 +832,40 @@ def supplier_new():
     return render_template("suppliers/form.html", supplier=None)
 
 
+@app.route("/suppliers/<int:supplier_id>")
+@login_required
+def supplier_detail(supplier_id):
+    """Supplier profile page — contact details, the items-supplied catalog,
+    and a full delivery history sorted soonest-expiry-first (FEFO) so store
+    officers can see at a glance what this supplier has brought in and
+    which batches need to move first."""
+    supplier = Supplier.query.get_or_404(supplier_id)
+    items = Item.query.order_by(Item.name).all()
+
+    # Every batch this supplier has delivered, across all their deliveries,
+    # sorted so the earliest-expiring stock shows first.
+    delivery_lines = (
+        DeliveryLineItem.query
+        .join(Delivery)
+        .filter(Delivery.supplier_id == supplier_id)
+        .order_by(DeliveryLineItem.expiry_date.asc())
+        .all()
+    )
+
+    today = date.today()
+    near_expiry_cutoff = today + relativedelta(months=Config.EXPIRY_ALERT_MONTHS)
+
+    return render_template(
+        "suppliers/detail.html",
+        supplier=supplier,
+        items=items,
+        delivery_lines=delivery_lines,
+        today=today,
+        near_expiry_cutoff=near_expiry_cutoff,
+        currency=Config.CURRENCY,
+    )
+
+
 @app.route("/suppliers/<int:supplier_id>/edit", methods=["GET", "POST"])
 @login_required
 @role_required("admin", "store_officer")
@@ -738,6 +883,120 @@ def supplier_edit(supplier_id):
         return redirect(url_for("supplier_list"))
 
     return render_template("suppliers/form.html", supplier=supplier)
+
+
+# ---------------------------------------------------------------------------
+# Hospitals
+# ---------------------------------------------------------------------------
+
+@app.route("/hospitals")
+@login_required
+@role_required("admin")
+def hospital_list():
+    hospitals = Hospital.query.order_by(Hospital.name).all()
+    return render_template("hospitals/list.html", hospitals=hospitals)
+
+
+@app.route("/hospitals/new", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def hospital_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        code = request.form.get("code", "").strip().upper()
+
+        if not name or not code:
+            flash("Hospital name and code are required.", "danger")
+            return render_template("hospitals/form.html", hospital=None)
+
+        if Hospital.query.filter((Hospital.name == name) | (Hospital.code == code)).first():
+            flash("Hospital with that name or code already exists.", "danger")
+            return render_template("hospitals/form.html", hospital=None)
+
+        hospital = Hospital(
+            name=name,
+            code=code,
+            address=request.form.get("address"),
+            contact_person=request.form.get("contact_person"),
+            phone=request.form.get("phone"),
+            email=request.form.get("email"),
+            is_active=request.form.get("is_active") == "on",
+        )
+        db.session.add(hospital)
+        db.session.commit()
+        flash(f"Hospital {hospital.name} added.", "success")
+        return redirect(url_for("hospital_list"))
+
+    return render_template("hospitals/form.html", hospital=None)
+
+
+@app.route("/hospitals/<int:hospital_id>/edit", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def hospital_edit(hospital_id):
+    hospital = Hospital.query.get_or_404(hospital_id)
+
+    if request.method == "POST":
+        hospital.name = request.form.get("name", "").strip()
+        hospital.code = request.form.get("code", "").strip().upper()
+        hospital.address = request.form.get("address")
+        hospital.contact_person = request.form.get("contact_person")
+        hospital.phone = request.form.get("phone")
+        hospital.email = request.form.get("email")
+        hospital.is_active = request.form.get("is_active") == "on"
+
+        db.session.commit()
+        flash(f"Hospital {hospital.name} updated.", "success")
+        return redirect(url_for("hospital_list"))
+
+    return render_template("hospitals/form.html", hospital=hospital)
+
+
+@app.route("/suppliers/<int:supplier_id>/catalog/add", methods=["POST"])
+@login_required
+@role_required("admin", "store_officer")
+def supplier_catalog_add(supplier_id):
+    """Add an item to a supplier's catalog (what they typically stock,
+    at what price, with what lead time). Purely informational."""
+    supplier = Supplier.query.get_or_404(supplier_id)
+    item_id = request.form.get("item_id")
+
+    if not item_id:
+        flash("Please select an item.", "danger")
+        return redirect(url_for("supplier_detail", supplier_id=supplier.id))
+
+    existing = SupplierItem.query.filter_by(supplier_id=supplier.id, item_id=item_id).first()
+    if existing:
+        flash("This item is already in the supplier's catalog.", "danger")
+        return redirect(url_for("supplier_detail", supplier_id=supplier.id))
+
+    entry = SupplierItem(
+        supplier_id=supplier.id,
+        item_id=item_id,
+        typical_unit_cost=request.form.get("typical_unit_cost") or None,
+        lead_time_days=request.form.get("lead_time_days") or None,
+        notes=request.form.get("notes"),
+    )
+    db.session.add(entry)
+    db.session.commit()
+
+    flash("Item added to supplier catalog.", "success")
+    return redirect(url_for("supplier_detail", supplier_id=supplier.id))
+
+
+@app.route("/suppliers/<int:supplier_id>/catalog/<int:entry_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "store_officer")
+def supplier_catalog_delete(supplier_id, entry_id):
+    entry = SupplierItem.query.get_or_404(entry_id)
+    if entry.supplier_id != supplier_id:
+        abort(404)
+
+    db.session.delete(entry)
+    db.session.commit()
+
+    flash("Item removed from supplier catalog.", "info")
+    return redirect(url_for("supplier_detail", supplier_id=supplier_id))
 
 
 # ---------------------------------------------------------------------------
@@ -893,6 +1152,100 @@ def po_cancel(po_id):
 
 
 # ---------------------------------------------------------------------------
+# Deliveries (always linked to a Purchase Order — po.status must be "Sent")
+# ---------------------------------------------------------------------------
+
+@app.route("/purchase-orders/<int:po_id>/deliveries/new", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "store_officer")
+def delivery_new(po_id):
+    po = PurchaseOrder.query.get_or_404(po_id)
+
+    if po.status != "Sent":
+        flash("Only purchase orders marked as Sent can receive a delivery.", "warning")
+        return redirect(url_for("po_detail", po_id=po.id))
+
+    if request.method == "POST":
+        delivery = Delivery(
+            delivery_number=next_reference("DEL", Delivery, "delivery_number"),
+            purchase_order_id=po.id,
+            supplier_id=po.supplier_id,
+            delivery_note_number=request.form.get("delivery_note_number", "").strip(),
+            delivery_date=(
+                datetime.strptime(request.form["delivery_date"], "%Y-%m-%d").date()
+                if request.form.get("delivery_date") else date.today()
+            ),
+            received_by_id=current_user.id,
+            status="Received",
+        )
+        db.session.add(delivery)
+        db.session.flush()  # assigns delivery.id before line items reference it
+
+        item_ids = request.form.getlist("item_id[]")
+        batch_numbers = request.form.getlist("batch_number[]")
+        expiry_dates = request.form.getlist("expiry_date[]")
+        quantities = request.form.getlist("quantity_delivered[]")
+        unit_prices = request.form.getlist("unit_price[]")
+
+        for item_id, batch_number, expiry_str, qty, price in zip(
+            item_ids, batch_numbers, expiry_dates, quantities, unit_prices
+        ):
+            if not item_id or not qty or not batch_number or not expiry_str:
+                continue
+
+            item = Item.query.get(item_id)
+            qty = float(qty)
+            price = float(price) if price else float(item.unit_cost or 0)
+
+            db.session.add(DeliveryLineItem(
+                delivery_id=delivery.id,
+                item_id=item.id,
+                batch_number=batch_number,
+                expiry_date=datetime.strptime(expiry_str, "%Y-%m-%d").date(),
+                quantity_delivered=qty,
+                unit_price=price,
+            ))
+
+            batch = Batch(
+                item_id=item.id,
+                batch_number=batch_number,
+                expiry_date=datetime.strptime(expiry_str, "%Y-%m-%d").date(),
+                quantity_received=qty,
+                quantity_remaining=qty,
+                location="Drug Store",
+            )
+            db.session.add(batch)
+            db.session.flush()
+
+            # same audit-trail helper used everywhere else in the app
+            log_movement(item, batch, "receipt", qty, to_location="Drug Store",
+                         reference=f"{delivery.delivery_number} / {po.po_number}")
+
+            # keep the PO line's received quantity in sync, same as po_receive()
+            po_line = next((l for l in po.lines if l.item_id == item.id), None)
+            if po_line:
+                po_line.quantity_received = (po_line.quantity_received or 0) + qty
+
+        po.status = "Received"
+        db.session.commit()
+        flash(f"{delivery.delivery_number} recorded against {po.po_number} — stock updated.", "success")
+        return redirect(url_for("po_detail", po_id=po.id))
+
+    items = Item.query.order_by(Item.name).all()
+    return render_template("purchase_orders/new_delivery.html", po=po, items=items,
+                            currency=Config.CURRENCY, today=date.today().isoformat())
+
+
+@app.route("/deliveries/<int:delivery_id>")
+@login_required
+def delivery_detail(delivery_id):
+    delivery = Delivery.query.get_or_404(delivery_id)
+    return render_template(
+        "purchase_orders/delivery_detail.html", delivery=delivery, currency=Config.CURRENCY
+    )
+
+
+# ---------------------------------------------------------------------------
 # Requisitions (S11 Counter Requisition and Issue Voucher)
 # ---------------------------------------------------------------------------
 
@@ -1037,6 +1390,471 @@ def requisition_receive(req_id):
 
 
 # ---------------------------------------------------------------------------
+# Patients
+# ---------------------------------------------------------------------------
+
+@app.route("/patients")
+@login_required
+def patient_list():
+    """Search/browse patients by name or IP/OP number. Read-only lookup —
+    available to any logged-in role since store officers, pharmacists, and
+    doctors all occasionally need to confirm a patient exists."""
+    q = request.args.get("q", "").strip()
+
+    query = Patient.query
+    if q:
+        query = query.filter(
+            Patient.name.ilike(f"%{q}%") | Patient.ip_op_number.ilike(f"%{q}%")
+        )
+
+    patients = query.order_by(Patient.name).limit(100).all()
+    return render_template("patients/list.html", patients=patients, q=q)
+
+
+@app.route("/api/patients/search")
+@login_required
+def api_patient_search():
+    """Typeahead search used by the prescription-writing form. Matches on
+    name or IP/OP number, up to 10 results."""
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify([])
+
+    patients = (
+        Patient.query
+        .filter(Patient.name.ilike(f"%{q}%") | Patient.ip_op_number.ilike(f"%{q}%"))
+        .order_by(Patient.name)
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {
+            "id": p.id,
+            "name": p.name,
+            "ip_op_number": p.ip_op_number,
+            "patient_type": p.patient_type,
+            "clinic_ward_unit": p.clinic_ward_unit or "",
+        }
+        for p in patients
+    ])
+
+
+@app.route("/patients/new", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "store_officer")
+def patient_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        ip_op_number = request.form.get("ip_op_number", "").strip()
+        patient_type = request.form.get("patient_type", "Outpatient")
+
+        if not name or not ip_op_number:
+            flash("Patient name and IP/OP number are required.", "danger")
+            return render_template("patients/form.html", patient=None)
+
+        if Patient.query.filter_by(ip_op_number=ip_op_number).first():
+            flash("A patient with that IP/OP number is already registered.", "danger")
+            return render_template("patients/form.html", patient=None)
+
+        patient = Patient(
+            name=name,
+            ip_op_number=ip_op_number,
+            gender=request.form.get("gender") or None,
+            patient_type=patient_type,
+            age=request.form.get("age") or None,
+            weight=request.form.get("weight") or None,
+            height=request.form.get("height") or None,
+            contact=request.form.get("contact") or None,
+            clinic_ward_unit=request.form.get("clinic_ward_unit") or None,
+            drug_allergies=request.form.get("drug_allergies") or None,
+        )
+        db.session.add(patient)
+        db.session.commit()
+        flash(f"Patient {patient.name} registered.", "success")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    return render_template("patients/form.html", patient=None)
+
+@app.route("/patients/<int:patient_id>")
+@login_required
+def patient_detail(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    prescriptions = (
+        Prescription.query.filter_by(patient_id=patient.id)
+        .order_by(Prescription.date.desc(), Prescription.id.desc())
+        .all()
+    )
+    return render_template("patients/detail.html", patient=patient, prescriptions=prescriptions)
+
+
+# ---------------------------------------------------------------------------
+# Prescribers (typeahead used by the outpatient/inpatient dispense forms)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/prescribers/search")
+@login_required
+def api_prescriber_search():
+    """Typeahead search used by the dispense forms. Returns up to 10 matches
+    for prescribers whose name contains the query string (case-insensitive).
+    Frontend calls this as the user types 2+ characters into the prescriber
+    field."""
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify([])
+
+    prescribers = (
+        Prescriber.query
+        .filter(Prescriber.is_active == True)  # noqa: E712
+        .filter(Prescriber.name.ilike(f"%{q}%"))
+        .order_by(Prescriber.name)
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {
+            "id": p.id,
+            "name": p.name,
+            "registration_number": p.registration_number or "",
+            "designation": p.designation or "",
+        }
+        for p in prescribers
+    ])
+
+
+@app.route("/api/prescribers", methods=["POST"])
+@login_required
+@role_required("admin", "pharmacist")
+def api_prescriber_create():
+    """Quick-add used by the 'no match found, add new prescriber' option on
+    the dispense forms. Returns the created record so the frontend can
+    immediately select it without a second lookup."""
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+
+    if not name:
+        return jsonify({"error": "Prescriber name is required"}), 400
+
+    existing = Prescriber.query.filter(Prescriber.name.ilike(name)).first()
+    if existing:
+        return jsonify({
+            "id": existing.id,
+            "name": existing.name,
+            "registration_number": existing.registration_number or "",
+            "designation": existing.designation or "",
+        }), 200
+
+    prescriber = Prescriber(
+        name=name,
+        registration_number=(data.get("registration_number") or "").strip() or None,
+        designation=(data.get("designation") or "").strip() or None,
+        phone=(data.get("phone") or "").strip() or None,
+    )
+    db.session.add(prescriber)
+    db.session.commit()
+
+    return jsonify({
+        "id": prescriber.id,
+        "name": prescriber.name,
+        "registration_number": prescriber.registration_number or "",
+        "designation": prescriber.designation or "",
+    }), 201
+
+
+@app.route("/prescribers")
+@login_required
+@role_required("admin", "pharmacist")
+def prescriber_list():
+    prescribers = Prescriber.query.order_by(Prescriber.name).all()
+    return render_template("prescribers/list.html", prescribers=prescribers)
+
+
+@app.route("/prescribers/new", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "pharmacist")
+def prescriber_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Prescriber name is required.", "danger")
+            return render_template("prescribers/form.html", prescriber=None)
+
+        prescriber = Prescriber(
+            name=name,
+            registration_number=request.form.get("registration_number") or None,
+            designation=request.form.get("designation") or None,
+            phone=request.form.get("phone") or None,
+            is_active=request.form.get("is_active") == "on",
+        )
+        db.session.add(prescriber)
+        db.session.commit()
+        flash(f"Prescriber {prescriber.name} added.", "success")
+        return redirect(url_for("prescriber_list"))
+
+    return render_template("prescribers/form.html", prescriber=None)
+
+
+@app.route("/prescribers/<int:prescriber_id>/edit", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "pharmacist")
+def prescriber_edit(prescriber_id):
+    prescriber = Prescriber.query.get_or_404(prescriber_id)
+
+    if request.method == "POST":
+        prescriber.name = request.form.get("name", "").strip()
+        prescriber.registration_number = request.form.get("registration_number") or None
+        prescriber.designation = request.form.get("designation") or None
+        prescriber.phone = request.form.get("phone") or None
+        prescriber.is_active = request.form.get("is_active") == "on"
+        db.session.commit()
+        flash(f"Prescriber {prescriber.name} updated.", "success")
+        return redirect(url_for("prescriber_list"))
+
+    return render_template("prescribers/form.html", prescriber=prescriber)
+
+
+# ---------------------------------------------------------------------------
+# Prescriptions — doctor writes, pharmacist dispenses
+#
+# This is the two-step workflow: a doctor writes a prescription against
+# quantity_prescribed (status="Pending", no stock touched, written_by_id set
+# to the doctor). A pharmacist later opens it from the pending queue and
+# dispenses against it — quantities default to what was prescribed, stock
+# deducts FEFO exactly as the walk-in dispense routes below do, and
+# quantity_dispensed / status get updated. Nothing here is retyped by the
+# pharmacist; they're just confirming/adjusting what the doctor already
+# wrote and where quantities came from.
+# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------
+# REPLACE the existing @app.route("/prescriptions/new", ...) function in
+# app.py with this version. Everything else in app.py stays the same —
+# this only changes how the patient is resolved (find-or-create by
+# ip_op_number instead of requiring a pre-selected patient_id).
+# -----------------------------------------------------------------------
+@app.route("/prescriptions/new", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "doctor")
+def prescription_new():
+    items = Item.query.order_by(Item.name).all()
+
+    # The logged-in doctor's own Prescriber record — powers the Registration
+    # Number / Designation display in the footer, and is created on first
+    # use if it doesn't exist yet.
+    doctor_prescriber = _get_or_create_own_prescriber(current_user)
+    db.session.commit()
+
+    # Support arriving here pre-filled from patient_new's redirect, or from
+    # a "Write prescription" link on patient_detail.
+    preselected_patient_id = request.args.get("patient_id", type=int)
+    preselected_patient = (
+        Patient.query.get(preselected_patient_id) if preselected_patient_id else None
+    )
+
+    if request.method == "POST":
+        ip_op_number = request.form.get("ip_op_number", "").strip()
+        name = request.form.get("patient_name", "").strip()
+
+        if not ip_op_number or not name:
+            flash("Patient name and IP/OP number are required.", "danger")
+            return render_template("prescriptions/new.html", items=items,
+                                    preselected_patient=None,
+                                    doctor_prescriber=doctor_prescriber)
+
+        gender = request.form.get("gender") or None
+        patient_type = request.form.get("patient_type", "Outpatient")
+        age = request.form.get("age") or None
+        weight = request.form.get("weight") or None
+        height = request.form.get("height") or None
+        contact = request.form.get("contact") or None
+        clinic_ward_unit = request.form.get("clinic_ward_unit") or None
+        drug_allergies = request.form.get("drug_allergies") or None
+
+        # Patients must already exist -- doctors don't register patients
+        # (that's done by admin/store_officer via /patients/new). Refresh
+        # visit-specific details (weight/age/clinic/allergies can change
+        # visit to visit) on the existing record only.
+        patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
+        if not patient:
+            flash(
+                f"No patient found with IP/OP number {ip_op_number}. "
+                "Please have them registered first.",
+                "danger",
+            )
+            return render_template("prescriptions/new.html", items=items,
+                                    preselected_patient=None,
+                                    doctor_prescriber=doctor_prescriber)
+
+        patient.name = name
+        patient.gender = gender
+        patient.patient_type = patient_type
+        patient.age = age
+        patient.weight = weight
+        patient.height = height
+        patient.contact = contact
+        patient.clinic_ward_unit = clinic_ward_unit
+        patient.drug_allergies = drug_allergies
+        prescriber = doctor_prescriber
+
+        prescription = Prescription(
+            patient_id=patient.id,
+            prescriber_id=prescriber.id,
+            written_by_id=current_user.id,
+            status="Pending",
+            prescriber_name=prescriber.name,
+            registration_number=prescriber.registration_number,
+            designation=prescriber.designation,
+        )
+        db.session.add(prescription)
+        db.session.flush()
+
+        item_ids = request.form.getlist("item_id[]")
+        doses = request.form.getlist("dose[]")
+        routes = request.form.getlist("route[]")
+        frequencies = request.form.getlist("frequency[]")
+        durations = request.form.getlist("duration[]")
+        quantities = request.form.getlist("quantity_prescribed[]")
+
+        line_count = 0
+        for item_id, dose, route, freq, dur, qty in zip(
+            item_ids, doses, routes, frequencies, durations, quantities
+        ):
+            if not item_id or not qty:
+                continue
+            item = Item.query.get(item_id)
+            db.session.add(PrescriptionLine(
+                prescription_id=prescription.id, item_id=item.id,
+                medicine_name=item.name, dose=dose, route=route,
+                frequency=freq, duration=dur,
+                quantity_prescribed=float(qty), quantity_dispensed=0,
+                dispensed=False,
+            ))
+            line_count += 1
+
+        if line_count == 0:
+            db.session.rollback()
+            flash("Add at least one medicine line before submitting.", "danger")
+            return render_template("prescriptions/new.html", items=items,
+                                    preselected_patient=patient,
+                                    doctor_prescriber=doctor_prescriber)
+
+        db.session.commit()
+        flash(f"Prescription written for {patient.name} and sent to the pharmacy queue.", "success")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    return render_template("prescriptions/new.html", items=items,
+                            preselected_patient=preselected_patient,
+                            doctor_prescriber=doctor_prescriber)
+@app.route("/prescriptions/mine")
+@login_required
+@role_required("admin", "doctor")
+def prescriptions_mine():
+    """A doctor's own prescribing history."""
+    prescriptions = (
+        Prescription.query.filter_by(written_by_id=current_user.id)
+        .order_by(Prescription.date.desc(), Prescription.id.desc())
+        .all()
+    )
+    return render_template("prescriptions/mine.html", prescriptions=prescriptions)
+
+
+@app.route("/prescriptions/pending")
+@login_required
+@role_required("admin", "pharmacist")
+def prescriptions_pending():
+    """The pharmacist's queue of doctor-written prescriptions waiting to be
+    dispensed (fully or partially)."""
+    prescriptions = (
+        Prescription.query.filter(Prescription.status.in_(["Pending", "Partially Dispensed"]))
+        .order_by(Prescription.date.asc(), Prescription.id.asc())
+        .all()
+    )
+    return render_template("prescriptions/pending.html", prescriptions=prescriptions)
+
+
+@app.route("/prescriptions/<int:prescription_id>")
+@login_required
+def prescription_detail(prescription_id):
+    prescription = Prescription.query.get_or_404(prescription_id)
+    return render_template("prescriptions/detail.html", prescription=prescription,
+                            currency=Config.CURRENCY)
+
+
+@app.route("/prescriptions/<int:prescription_id>/dispense", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "pharmacist")
+def prescription_dispense(prescription_id):
+    """Pulls up exactly what the doctor wrote — item, dose, route,
+    frequency, duration, quantity prescribed — so the pharmacist only
+    confirms or adjusts the quantity actually being given out today,
+    instead of retyping the prescription. Stock deducts FEFO from the
+    correct pharmacy point based on the patient's type, same as the
+    walk-in dispense routes."""
+    prescription = Prescription.query.get_or_404(prescription_id)
+
+    if prescription.status == "Dispensed":
+        flash("This prescription has already been fully dispensed.", "info")
+        return redirect(url_for("prescription_detail", prescription_id=prescription.id))
+
+    location = (
+        "Outpatient Pharmacy" if prescription.patient.patient_type == "Outpatient"
+        else "Inpatient Pharmacy"
+    )
+
+    if request.method == "POST":
+        any_dispensed = False
+        all_fully_dispensed = True
+
+        for line in prescription.lines:
+            remaining_prescribed = float(line.quantity_prescribed or 0) - float(line.quantity_dispensed or 0)
+            requested = request.form.get(f"dispense_{line.id}", "")
+            qty_to_dispense = float(requested) if requested else 0
+            qty_to_dispense = max(0, min(qty_to_dispense, remaining_prescribed))
+
+            if qty_to_dispense <= 0:
+                if remaining_prescribed > 0:
+                    all_fully_dispensed = False
+                continue
+
+            remaining = qty_to_dispense
+            batches = (
+                Batch.query.filter_by(item_id=line.item_id, location=location)
+                .filter(Batch.quantity_remaining > 0)
+                .order_by(Batch.expiry_date.asc())  # FEFO
+                .all()
+            )
+            for batch in batches:
+                if remaining <= 0:
+                    break
+                take = min(remaining, float(batch.quantity_remaining))
+                batch.quantity_remaining = float(batch.quantity_remaining) - take
+                remaining -= take
+                log_movement(line.item, batch, "issue", take,
+                             from_location=location, to_location="Patient",
+                             reference=f"RX-{prescription.id}")
+
+            actually_dispensed = qty_to_dispense - remaining
+            line.quantity_dispensed = float(line.quantity_dispensed or 0) + actually_dispensed
+            line.dispensed = float(line.quantity_dispensed) >= float(line.quantity_prescribed or 0)
+            if actually_dispensed > 0:
+                any_dispensed = True
+            if not line.dispensed:
+                all_fully_dispensed = False
+
+        if not any_dispensed:
+            flash("Enter at least one quantity to dispense.", "danger")
+            return render_template("prescriptions/dispense.html", prescription=prescription,
+                                    location=location)
+
+        prescription.status = "Dispensed" if all_fully_dispensed else "Partially Dispensed"
+        db.session.commit()
+        flash(f"Dispensed against prescription for {prescription.patient.name}.", "success")
+        return redirect(url_for("prescription_detail", prescription_id=prescription.id))
+
+    return render_template("prescriptions/dispense.html", prescription=prescription, location=location)
+
+
+# ---------------------------------------------------------------------------
 # Outpatient Pharmacy
 # ---------------------------------------------------------------------------
 
@@ -1066,11 +1884,55 @@ def outpatient_dispense():
             flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
             return render_template("outpatient/dispense.html", items=items)
 
+        # If a doctor has already written a prescription for this patient
+        # that's waiting to be dispensed, send the pharmacist there instead
+        # of letting them re-enter everything from scratch here.
+        pending = (
+            Prescription.query.filter(
+                Prescription.patient_id == patient.id,
+                Prescription.status.in_(["Pending", "Partially Dispensed"]),
+            )
+            .order_by(Prescription.date.desc())
+            .first()
+        )
+        if pending and not request.form.get("ignore_pending"):
+            flash(
+                f"{patient.name} already has a prescription from Dr. "
+                f"{pending.prescriber_name} waiting to be dispensed. "
+                f"Use the pharmacy queue instead, or submit again to add this as a separate walk-in entry.",
+                "warning",
+            )
+            return render_template("outpatient/dispense.html", items=items,
+                                    pending_prescription=pending)
+
+        prescriber_id = request.form.get("prescriber_id") or None
+        prescriber = Prescriber.query.get(prescriber_id) if prescriber_id else None
+
+        if prescriber:
+            prescriber_name = prescriber.name
+            registration_number = prescriber.registration_number
+            designation = prescriber.designation
+        else:
+            # Fallback: no prescriber_id came through (e.g. JS disabled) —
+            # keep accepting the typed field so the form still works.
+            prescriber_name = request.form.get("prescriber_name", "").strip()
+            registration_number = request.form.get("registration_number")
+            designation = request.form.get("designation")
+
+        if not prescriber_name:
+            flash("Prescriber name is required.", "danger")
+            return render_template("outpatient/dispense.html", items=items)
+
         prescription = Prescription(
             patient_id=patient.id,
-            prescriber_name=request.form["prescriber_name"],
-            registration_number=request.form.get("registration_number"),
-            designation=request.form.get("designation"),
+            prescriber_id=prescriber.id if prescriber else None,
+            prescriber_name=prescriber_name,
+            registration_number=registration_number,
+            designation=designation,
+            # Written and dispensed in the same step (walk-in / phoned-in
+            # prescription, no doctor login involved) — mark it dispensed
+            # immediately rather than leaving it in the pending queue.
+            status="Dispensed",
         )
         db.session.add(prescription)
         db.session.flush()
@@ -1093,7 +1955,8 @@ def outpatient_dispense():
             line = PrescriptionLine(
                 prescription_id=prescription.id, item_id=item.id,
                 medicine_name=item.name, dose=dose, route=route,
-                frequency=freq, duration=dur, quantity_dispensed=qty,
+                frequency=freq, duration=dur,
+                quantity_prescribed=qty, quantity_dispensed=qty,
             )
             db.session.add(line)
 
@@ -1153,11 +2016,47 @@ def inpatient_dispense():
             flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
             return render_template("inpatient/dispense.html", items=items)
 
+        pending = (
+            Prescription.query.filter(
+                Prescription.patient_id == patient.id,
+                Prescription.status.in_(["Pending", "Partially Dispensed"]),
+            )
+            .order_by(Prescription.date.desc())
+            .first()
+        )
+        if pending and not request.form.get("ignore_pending"):
+            flash(
+                f"{patient.name} already has a prescription from Dr. "
+                f"{pending.prescriber_name} waiting to be dispensed. "
+                f"Use the pharmacy queue instead, or submit again to add this as a separate walk-in entry.",
+                "warning",
+            )
+            return render_template("inpatient/dispense.html", items=items,
+                                    pending_prescription=pending)
+
+        prescriber_id = request.form.get("prescriber_id") or None
+        prescriber = Prescriber.query.get(prescriber_id) if prescriber_id else None
+
+        if prescriber:
+            prescriber_name = prescriber.name
+            registration_number = prescriber.registration_number
+            designation = prescriber.designation
+        else:
+            prescriber_name = request.form.get("prescriber_name", "").strip()
+            registration_number = request.form.get("registration_number")
+            designation = request.form.get("designation")
+
+        if not prescriber_name:
+            flash("Prescriber name is required.", "danger")
+            return render_template("inpatient/dispense.html", items=items)
+
         prescription = Prescription(
             patient_id=patient.id,
-            prescriber_name=request.form["prescriber_name"],
-            registration_number=request.form.get("registration_number"),
-            designation=request.form.get("designation"),
+            prescriber_id=prescriber.id if prescriber else None,
+            prescriber_name=prescriber_name,
+            registration_number=registration_number,
+            designation=designation,
+            status="Dispensed",
         )
         db.session.add(prescription)
         db.session.flush()
@@ -1173,7 +2072,8 @@ def inpatient_dispense():
 
             db.session.add(PrescriptionLine(
                 prescription_id=prescription.id, item_id=item.id,
-                medicine_name=item.name, quantity_dispensed=qty, dispensed=True,
+                medicine_name=item.name,
+                quantity_prescribed=qty, quantity_dispensed=qty, dispensed=True,
             ))
 
             remaining = qty
@@ -1297,10 +2197,100 @@ def monitoring_list():
 # Reports (CSV export)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Reports (CSV export) — index page shows only the reports relevant to the
+# logged-in user's role. admin always sees every report; other roles see
+# a curated subset based on what they actually do day to day.
+# ---------------------------------------------------------------------------
+
+REPORTS = [
+    {
+        "key": "inventory_valuation",
+        "title": "Inventory Valuation",
+        "description": "Every item's SKU, name, quantity on hand, unit cost, and total stock value.",
+        "icon": "📦",
+        "icon_class": "report-icon-tan",
+        "endpoint": "report_inventory_valuation",
+        "roles": ["admin", "store_officer"],
+    },
+    {
+        "key": "stock_movements",
+        "title": "Stock Movement History",
+        "description": "Full audit trail of receipts, transfers, and issues across every item and batch.",
+        "icon": "🔄",
+        "icon_class": "report-icon-blue",
+        "endpoint": "report_stock_movements",
+        "roles": ["admin", "store_officer", "pharmacist"],
+    },
+    {
+        "key": "purchase_orders",
+        "title": "Purchase Order Log",
+        "description": "Every PO with supplier, status, order date, and total value.",
+        "icon": "🛒",
+        "icon_class": "report-icon-purple",
+        "endpoint": "report_purchase_orders",
+        "roles": ["admin", "store_officer"],
+    },
+    {
+        "key": "requisitions",
+        "title": "Requisition Log",
+        "description": "Every S11 requisition with department, issue point, status, and date.",
+        "icon": "🧾",
+        "icon_class": "report-icon-teal",
+        "endpoint": "report_requisitions",
+        "roles": ["admin", "store_officer", "pharmacist"],
+    },
+    {
+        "key": "expiry",
+        "title": "Expiry Report",
+        "description": "Every batch still in stock, with its expiry date and quantity remaining.",
+        "icon": "⏰",
+        "icon_class": "report-icon-red",
+        "endpoint": "report_expiry",
+        "roles": ["admin", "store_officer", "pharmacist"],
+    },
+    {
+        "key": "discharge_refunds",
+        "title": "Discharge Refund Report",
+        "description": "Every discharge reconciliation: quantity issued, undepleted, refund amount, and outcome.",
+        "icon": "💰",
+        "icon_class": "report-icon-amber",
+        "endpoint": "report_discharge_refunds",
+        "roles": ["admin", "pharmacist"],
+    },
+    {
+        "key": "analytics",
+        "title": "Visual Analytics",
+        "description": "Interactive charts: stock value trend, procurement vs. consumption, expiry timeline, stock by location, and top-moving items.",
+        "icon": "📊",
+        "icon_class": "report-icon-green",
+        "endpoint": "reports_analytics",
+        "roles": ["admin"],
+        "highlight": True,
+        "cta": "Open Analytics",
+    },
+    {
+        "key": "doctor_activity",
+        "title": "My Patient Activity",
+        "description": "Patients seen and prescriptions written over time, plus your completion rate — how many prescriptions were fully dispensed at the pharmacy.",
+        "icon": "🩺",
+        "icon_class": "report-icon-teal",
+        "endpoint": "reports_doctor_analytics",
+        "roles": ["admin", "doctor"],
+        "highlight": True,
+        "cta": "View My Activity",
+    },
+]
+
+
 @app.route("/reports")
 @login_required
 def reports_index():
-    return render_template("reports/index.html")
+    role = current_user.role
+    visible_reports = [
+        r for r in REPORTS if role == "admin" or role in r["roles"]
+    ]
+    return render_template("reports/index.html", reports=visible_reports)
 
 
 @app.route("/reports/inventory-valuation.csv")
@@ -1593,7 +2583,152 @@ def api_top_moving_items():
         "labels": [r.name for r in rows],
         "values": [float(r.total_issued or 0) for r in rows],
     })
+# ---------------------------------------------------------------------------
+# Reports — Doctor Analytics
+#
+# Doctor-facing equivalent of the admin analytics dashboard above, but scoped
+# to the logged-in doctor's own prescribing activity instead of hospital-wide
+# stock data. Sits alongside reports_analytics() / api_stock_value_trend() etc.
+#
+# "Attended" = a prescription that reached status "Dispensed" (fully given
+# out). "Work percentage" = Dispensed / total prescriptions written, i.e.
+# how much of what this doctor prescribes actually gets completed at the
+# pharmacy rather than sitting Pending/Partially Dispensed or Rejected.
+#
+# admin can view any doctor's activity via ?doctor_id=<id>; a doctor viewing
+# their own page always sees their own data regardless of query params.
+# ---------------------------------------------------------------------------
 
+def _resolve_doctor_id():
+    """Doctors always see their own data. Admins may pass ?doctor_id=<id>
+    to inspect a specific doctor; if omitted, admin sees all doctors combined
+    (doctor_id=None)."""
+    if current_user.role == "doctor":
+        return current_user.id
+    doctor_id = request.args.get("doctor_id", type=int)
+    return doctor_id  # None means "all doctors" for admin
+
+
+@app.route("/reports/doctor-analytics")
+@login_required
+@role_required("admin", "doctor")
+def reports_doctor_analytics():
+    doctors = User.query.filter_by(role="doctor").order_by(User.name).all() if current_user.role == "admin" else None
+    selected_doctor_id = _resolve_doctor_id()
+    return render_template(
+        "reports/doctor_analytics.html",
+        doctors=doctors,
+        selected_doctor_id=selected_doctor_id,
+    )
+
+
+@app.route("/reports/api/doctor-patients-seen")
+@login_required
+@role_required("admin", "doctor")
+def api_doctor_patients_seen():
+    """Distinct patients seen per month, for the last `months` months."""
+    months = request.args.get("months", 6, type=int)
+    doctor_id = _resolve_doctor_id()
+
+    start_date = date.today().replace(day=1) - relativedelta(months=months - 1)
+
+    query = Prescription.query.filter(Prescription.date >= start_date)
+    if doctor_id:
+        query = query.filter(Prescription.written_by_id == doctor_id)
+    else:
+        query = query.filter(Prescription.written_by_id.isnot(None))
+
+    prescriptions = query.all()
+
+    buckets = {}
+    for p in prescriptions:
+        month_key = p.date.strftime("%Y-%m")
+        buckets.setdefault(month_key, set()).add(p.patient_id)
+
+    ordered_keys = sorted(buckets.keys())
+    return jsonify({
+        "labels": [datetime.strptime(k, "%Y-%m").strftime("%b %Y") for k in ordered_keys],
+        "values": [len(buckets[k]) for k in ordered_keys],
+    })
+
+
+@app.route("/reports/api/doctor-prescriptions-written")
+@login_required
+@role_required("admin", "doctor")
+def api_doctor_prescriptions_written():
+    """Prescriptions written per month, for the last `months` months."""
+    months = request.args.get("months", 6, type=int)
+    doctor_id = _resolve_doctor_id()
+
+    start_date = date.today().replace(day=1) - relativedelta(months=months - 1)
+
+    query = Prescription.query.filter(Prescription.date >= start_date)
+    if doctor_id:
+        query = query.filter(Prescription.written_by_id == doctor_id)
+    else:
+        query = query.filter(Prescription.written_by_id.isnot(None))
+
+    prescriptions = query.all()
+
+    buckets = {}
+    for p in prescriptions:
+        month_key = p.date.strftime("%Y-%m")
+        buckets[month_key] = buckets.get(month_key, 0) + 1
+
+    ordered_keys = sorted(buckets.keys())
+    return jsonify({
+        "labels": [datetime.strptime(k, "%Y-%m").strftime("%b %Y") for k in ordered_keys],
+        "values": [buckets[k] for k in ordered_keys],
+    })
+
+
+@app.route("/reports/api/doctor-status-breakdown")
+@login_required
+@role_required("admin", "doctor")
+def api_doctor_status_breakdown():
+    """Prescription status breakdown (Pending / Partially Dispensed /
+    Dispensed / Rejected) for the doughnut/bar chart."""
+    doctor_id = _resolve_doctor_id()
+
+    query = db.session.query(Prescription.status, func.count(Prescription.id))
+    if doctor_id:
+        query = query.filter(Prescription.written_by_id == doctor_id)
+    else:
+        query = query.filter(Prescription.written_by_id.isnot(None))
+
+    rows = query.group_by(Prescription.status).all()
+
+    return jsonify({
+        "labels": [status for status, _ in rows],
+        "values": [count for _, count in rows],
+    })
+
+
+@app.route("/reports/api/doctor-completion-rate")
+@login_required
+@role_required("admin", "doctor")
+def api_doctor_completion_rate():
+    """Single 'work percentage' figure: what share of this doctor's
+    prescriptions reached Dispensed (fully attended to) vs everything else
+    (Pending / Partially Dispensed / Rejected)."""
+    doctor_id = _resolve_doctor_id()
+
+    query = Prescription.query
+    if doctor_id:
+        query = query.filter(Prescription.written_by_id == doctor_id)
+    else:
+        query = query.filter(Prescription.written_by_id.isnot(None))
+
+    total = query.count()
+    dispensed = query.filter(Prescription.status == "Dispensed").count()
+
+    completion_rate = round((dispensed / total) * 100, 1) if total else 0.0
+
+    return jsonify({
+        "total_prescriptions": total,
+        "dispensed": dispensed,
+        "completion_rate": completion_rate,
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

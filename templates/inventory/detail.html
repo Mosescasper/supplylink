@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.name }}{% endblock %}
+
+{% block page_title %}{{ item.name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inventory_edit', item_id=item.id) }}" class="btn">Edit Item</a>
+<a href="{{ url_for('inventory_list') }}" class="btn">Back to Inventory</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>SKU</th>
+                <td>{{ item.sku }}</td>
+            </tr>
+            <tr>
+                <th>Category</th>
+                <td>{{ item.category.name if item.category else "—" }}</td>
+            </tr>
+            <tr>
+                <th>Supplier</th>
+                <td>
+                    {% if item.supplier %}
+                    <a href="{{ url_for('supplier_detail', supplier_id=item.supplier.id) }}">{{ item.supplier.name }}</a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Unit of Issue</th>
+                <td>{{ item.unit_of_issue }}</td>
+            </tr>
+            <tr>
+                <th>Unit Cost ({{ currency }})</th>
+                <td>{{ "%.2f"|format(item.unit_cost) }}</td>
+            </tr>
+            <tr>
+                <th>Reorder Level</th>
+                <td>
+                    {{ item.reorder_level or 0 }}
+                    {% if item.reorder_level_manual_override %}
+                    <span class="badge badge-info">Manual</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Quantity on Hand</th>
+                <td>
+                    {{ item.quantity_on_hand }}
+                    {% if item.is_low_stock %}
+                    <span class="badge badge-warning">Low Stock</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Stock by Location</h3>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th>Quantity Remaining</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set by_location = item.quantity_on_hand_by_location %}
+            {% for location, qty in by_location.items() %}
+            <tr>
+                <td>{{ location }}</td>
+                <td>{{ qty }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="2" class="empty-state">No stock recorded at any location yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Batches — FEFO Order</h3>
+    <p class="form-hint">
+        All batches of this item, sorted by expiry date — soonest-expiring first.
+    </p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Batch Number</th>
+                <th>Location</th>
+                <th>Expiry Date</th>
+                <th>Qty Received</th>
+                <th>Qty Remaining</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in item.batches | sort(attribute="expiry_date") %}
+            <tr>
+                <td>{{ batch.batch_number }}</td>
+                <td>{{ batch.location }}</td>
+                <td>{{ batch.expiry_date.strftime("%d %b %Y") if batch.expiry_date else "—" }}</td>
+                <td>{{ batch.quantity_received }}</td>
+                <td>{{ batch.quantity_remaining }}</td>
+                <td>
+                    {% if batch.expiry_date and batch.expiry_date < today %}
+                    <span class="badge badge-danger">Expired</span>
+                    {% elif batch.is_near_expiry(expiry_months) %}
+                    <span class="badge badge-warning">Near Expiry</span>
+                    {% else %}
+                    <span class="badge badge-success">OK</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if batch.quantity_remaining and batch.quantity_remaining > 0 %}
+                    <a href="{{ url_for('batch_transfer', batch_id=batch.id) }}" class="btn btn-sm">Transfer</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No batches recorded for this item yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

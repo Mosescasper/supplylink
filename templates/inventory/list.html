@@ -78,7 +78,7 @@
           {% endif %}
         </td>
         <td style="white-space:nowrap;">
-          <a href="{{ url_for('inventory_view', item_id=item.id) }}" class="btn" style="padding:5px 10px; font-size:12px;">View</a>
+<a href="{{ url_for('inventory_detail', item_id=item.id) }}" class="btn" ...>View</a>
           <a href="{{ url_for('inventory_edit', item_id=item.id) }}" class="btn" style="padding:5px 10px; font-size:12px;">Edit</a>
         </td>
       </tr>

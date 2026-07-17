@@ -10,7 +10,7 @@
 {% block content %}
 
 <div class="card" style="max-width: 640px;">
-<form method="post" action="{{ url_for('inventory_edit', item_id=item.id) if item else url_for('inventory_add') }}">
+<form method="post" action="{{ url_for('inventory_edit', item_id=item.id) if item else url_for('inventory_new') }}">
 
   {% if csrf_token is defined %}
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -22,17 +22,35 @@ class Department(db.Model):
         return f"<Department {self.name}>"
 
 
+class Hospital(db.Model):
+    __tablename__ = "hospitals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, unique=True, index=True)
+    code = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    address = db.Column(db.String(255))
+    contact_person = db.Column(db.String(150))
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(150))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Hospital {self.name}>"
+
+
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
-    # Only three roles exist in the system now.
-    ROLES = ("admin", "store_officer", "pharmacist")
+    # Four roles exist in the system now.
+    ROLES = ("admin", "store_officer", "pharmacist", "doctor")
 
     # Human-friendly labels for dropdowns / templates.
     ROLE_LABELS = {
         "admin": "Admin",
         "store_officer": "Store Officer",
         "pharmacist": "Pharmacist",
+        "doctor": "Doctor",
     }
 
     id = db.Column(db.Integer, primary_key=True)
@@ -88,6 +106,10 @@ class Supplier(db.Model):
 
     items = db.relationship("Item", back_populates="supplier")
     purchase_orders = db.relationship("PurchaseOrder", back_populates="supplier")
+    deliveries = db.relationship("Delivery", back_populates="supplier")
+    catalog_items = db.relationship("SupplierItem", back_populates="supplier",
+                                     cascade="all, delete-orphan",
+                                     order_by="SupplierItem.id")
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +121,7 @@ class Item(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     sku = db.Column(db.String(50), nullable=False, unique=True)
-    name = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(500), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"))
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
     unit_of_issue = db.Column(db.String(50), nullable=False, default="Units")
@@ -209,6 +231,7 @@ class PurchaseOrder(db.Model):
     supplier = db.relationship("Supplier", back_populates="purchase_orders")
     lines = db.relationship("PurchaseOrderLine", back_populates="purchase_order",
                              cascade="all, delete-orphan")
+    deliveries = db.relationship("Delivery", back_populates="purchase_order")
 
     @property
     def total_value(self):
@@ -227,6 +250,86 @@ class PurchaseOrderLine(db.Model):
 
     purchase_order = db.relationship("PurchaseOrder", back_populates="lines")
     item = db.relationship("Item")
+
+
+class Delivery(db.Model):
+    """
+    A real-world delivery event: what a supplier actually dropped off, when,
+    and at what price. Always linked to the Purchase Order it fulfils.
+    """
+    __tablename__ = "deliveries"
+
+    STATUSES = ("Received", "Partially Received", "Rejected")
+
+    id = db.Column(db.Integer, primary_key=True)
+    delivery_number = db.Column(db.String(50), nullable=False, unique=True)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey("purchase_orders.id"), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=False)
+    delivery_note_number = db.Column(db.String(100))  # supplier's own invoice/delivery note ref
+    delivery_date = db.Column(db.Date, default=date.today)
+    received_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="Received")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    purchase_order = db.relationship("PurchaseOrder", back_populates="deliveries")
+    supplier = db.relationship("Supplier", back_populates="deliveries")
+    received_by = db.relationship("User")
+    lines = db.relationship("DeliveryLineItem", back_populates="delivery",
+                             cascade="all, delete-orphan")
+
+    @property
+    def total_value(self):
+        return sum((l.quantity_delivered or 0) * (l.unit_price or 0) for l in self.lines)
+
+    def __repr__(self):
+        return f"<Delivery {self.delivery_number} for {self.purchase_order.po_number}>"
+
+
+class DeliveryLineItem(db.Model):
+    """One item delivered as part of a Delivery: quantity, batch, expiry,
+    and the price actually charged this time (may differ from the item's
+    standard unit_cost)."""
+    __tablename__ = "delivery_line_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    delivery_id = db.Column(db.Integer, db.ForeignKey("deliveries.id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+    batch_number = db.Column(db.String(100), nullable=False)
+    expiry_date = db.Column(db.Date, nullable=False)
+    quantity_delivered = db.Column(db.Numeric(12, 2), nullable=False)
+    unit_price = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+
+    delivery = db.relationship("Delivery", back_populates="lines")
+    item = db.relationship("Item")
+
+    @property
+    def line_total(self):
+        return (self.quantity_delivered or 0) * (self.unit_price or 0)
+
+
+class SupplierItem(db.Model):
+    """An item a supplier is known to stock, with the price/lead-time they
+    typically quote. Informational catalog entry — not tied to any actual
+    order or delivery, just a reference used when raising POs."""
+    __tablename__ = "supplier_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+    typical_unit_cost = db.Column(db.Numeric(12, 2))
+    lead_time_days = db.Column(db.Integer)
+    notes = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    supplier = db.relationship("Supplier", back_populates="catalog_items")
+    item = db.relationship("Item")
+
+    __table_args__ = (
+        db.UniqueConstraint("supplier_id", "item_id", name="uq_supplier_item"),
+    )
+
+    def __repr__(self):
+        return f"<SupplierItem supplier={self.supplier_id} item={self.item_id}>"
 
 
 class ProcurementPlan(db.Model):
@@ -305,7 +408,7 @@ class RequisitionLine(db.Model):
 
 
 # ---------------------------------------------------------------------------
-# Patients, prescriptions, discharge
+# Patients, prescribers, prescriptions, discharge
 # ---------------------------------------------------------------------------
 
 class Patient(db.Model):
@@ -326,17 +429,63 @@ class Patient(db.Model):
     prescriptions = db.relationship("Prescription", back_populates="patient")
 
 
+class Prescriber(db.Model):
+    """A doctor/clinician who can be looked up by typing a few letters of
+    their name at the point of dispensing, instead of typing the full name,
+    registration number, and designation every time.
+
+    Prescription still stores its own snapshot columns (prescriber_name,
+    registration_number, designation) at the moment the prescription is
+    written — prescriber_id just links back to the reusable record so those
+    snapshot fields can be auto-filled rather than retyped.
+
+    user_id links this record back to a logged-in doctor's own account, for
+    the ones auto-created the first time that doctor writes a prescription
+    (see _get_or_create_own_prescriber in app.py). Prescribers created by a
+    pharmacist/admin for an external doctor who has no login of their own
+    are left with user_id=None."""
+    __tablename__ = "prescribers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, index=True)
+    registration_number = db.Column(db.String(50))
+    designation = db.Column(db.String(100))
+    phone = db.Column(db.String(30))
+    is_active = db.Column(db.Boolean, default=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User")
+
+    def __repr__(self):
+        return f"<Prescriber {self.name}>"
+
+
 class Prescription(db.Model):
     __tablename__ = "prescriptions"
 
+    STATUSES = ("Pending", "Partially Dispensed", "Dispensed")
+
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    prescriber_id = db.Column(db.Integer, db.ForeignKey("prescribers.id"))
+    # The doctor's own User account, when a prescription was written through
+    # the doctor login flow (prescription_new). NULL for the pharmacist's
+    # walk-in/phoned-in dispense routes, which write and dispense in one
+    # step without going through a doctor account.
+    written_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     date = db.Column(db.Date, default=date.today)
     prescriber_name = db.Column(db.String(150), nullable=False)
     registration_number = db.Column(db.String(50))
     designation = db.Column(db.String(100))
+    # "Pending" (doctor wrote it, nothing dispensed yet), "Partially
+    # Dispensed", or "Dispensed" (fully given out). Walk-in dispense routes
+    # set this straight to "Dispensed" since they write and dispense at once.
+    status = db.Column(db.String(30), nullable=False, default="Pending")
 
     patient = db.relationship("Patient", back_populates="prescriptions")
+    prescriber = db.relationship("Prescriber")
+    written_by = db.relationship("User", foreign_keys=[written_by_id])
     lines = db.relationship("PrescriptionLine", back_populates="prescription",
                              cascade="all, delete-orphan")
 
@@ -352,6 +501,10 @@ class PrescriptionLine(db.Model):
     route = db.Column(db.String(50))
     frequency = db.Column(db.String(50))
     duration = db.Column(db.String(50))
+    # What the doctor prescribed. For the walk-in dispense routes (which
+    # write and dispense in the same step) this is set equal to whatever
+    # was actually dispensed, so remaining-quantity math stays correct.
+    quantity_prescribed = db.Column(db.Numeric(12, 2), default=0)
     quantity_dispensed = db.Column(db.Numeric(12, 2), default=0)
     dispensed = db.Column(db.Boolean, default=False)
 

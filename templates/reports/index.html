@@ -11,58 +11,23 @@
   Export any of the reports below as CSV. Files open directly in Excel/Sheets
   and can be filtered further there — filters applied on the Batches and
   Expiry Alerts screens carry over into their own export links on those pages.
+  This list is scoped to reports relevant to your role ({{ current_user.role_label }}).
 </p>
 
+{% if reports %}
 <div class="reports-grid">
-
-  <div class="report-card">
-    <div class="report-icon report-icon-tan">📦</div>
-    <h3>Inventory Valuation</h3>
-    <p>Every item's SKU, name, quantity on hand, unit cost, and total stock value.</p>
-    <a href="{{ url_for('report_inventory_valuation') }}" class="btn btn-primary">Download CSV</a>
+  {% for report in reports %}
+  <div class="report-card {{ 'report-card-highlight' if report.highlight }}">
+    <div class="report-icon {{ report.icon_class }}">{{ report.icon }}</div>
+    <h3>{{ report.title }}</h3>
+    <p>{{ report.description }}</p>
+    <a href="{{ url_for(report.endpoint) }}" class="btn btn-primary">{{ report.cta or "Download CSV" }}</a>
   </div>
-
-  <div class="report-card">
-    <div class="report-icon report-icon-blue">🔄</div>
-    <h3>Stock Movement History</h3>
-    <p>Full audit trail of receipts, transfers, and issues across every item and batch.</p>
-    <a href="{{ url_for('report_stock_movements') }}" class="btn btn-primary">Download CSV</a>
-  </div>
-
-  <div class="report-card">
-    <div class="report-icon report-icon-purple">🛒</div>
-    <h3>Purchase Order Log</h3>
-    <p>Every PO with supplier, status, order date, and total value.</p>
-    <a href="{{ url_for('report_purchase_orders') }}" class="btn btn-primary">Download CSV</a>
-  </div>
-
-  <div class="report-card">
-    <div class="report-icon report-icon-teal">🧾</div>
-    <h3>Requisition Log</h3>
-    <p>Every S11 requisition with department, issue point, status, and date.</p>
-    <a href="{{ url_for('report_requisitions') }}" class="btn btn-primary">Download CSV</a>
-  </div>
-
-  <div class="report-card">
-    <div class="report-icon report-icon-red">⏰</div>
-    <h3>Expiry Report</h3>
-    <p>Every batch still in stock, with its expiry date and quantity remaining.</p>
-    <a href="{{ url_for('report_expiry') }}" class="btn btn-primary">Download CSV</a>
-  </div>
-
-  <div class="report-card">
-    <div class="report-icon report-icon-amber">💰</div>
-    <h3>Discharge Refund Report</h3>
-    <p>Every discharge reconciliation: quantity issued, undepleted, refund amount, and outcome.</p>
-    <a href="{{ url_for('report_discharge_refunds') }}" class="btn btn-primary">Download CSV</a>
-  </div>
-
-  <div class="report-card report-card-highlight">
-    <div class="report-icon report-icon-green">📊</div>
-    <h3>Visual Analytics</h3>
-    <p>Interactive charts: stock value trend, procurement vs. consumption, expiry timeline, stock by location, and top-moving items.</p>
-    <a href="{{ url_for('reports_analytics') }}" class="btn btn-primary">Open Analytics</a>
-  </div>
-
+  {% endfor %}
 </div>
+{% else %}
+<div class="empty-state">
+  <p>No reports are currently set up for your role.</p>
+</div>
+{% endif %}
 {% endblock %}

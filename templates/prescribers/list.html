@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Prescribers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>Prescribers</h1>
+        <p class="page-subtitle">Doctors/clinicians used by the prescriber lookup on dispense forms</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="{{ url_for('prescriber_new') }}" class="btn btn-primary">+ Add Prescriber</a>
+    </div>
+</div>
+
+<div class="card">
+    {% if prescribers %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Registration No.</th>
+                <th>Designation</th>
+                <th>Phone</th>
+                <th>Login Account</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in prescribers %}
+            <tr>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>{{ p.registration_number or "—" }}</td>
+                <td>{{ p.designation or "—" }}</td>
+                <td>{{ p.phone or "—" }}</td>
+                <td>{{ p.user.email if p.user else "—" }}</td>
+                <td>
+                    {% if p.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    <a href="{{ url_for('prescriber_edit', prescriber_id=p.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">👨‍⚕️</div>
+        <h3>No prescribers yet</h3>
+        <p>Prescribers are also added automatically the first time a doctor writes a prescription, or via the "add new" option on dispense forms.</p>
+        <a href="{{ url_for('prescriber_new') }}" class="btn btn-primary">Add Prescriber</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header-content h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 2rem;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+}
+
+.table th {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #3fcf5f;
+    border-bottom: 2px solid #333;
+    font-size: 0.85rem;
+}
+
+.table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #292929;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(63, 207, 95, 0.15);
+    color: #3fcf5f;
+}
+
+.badge-secondary {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #3fcf5f;
+    border: 1px solid #3fcf5f;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: #ccc;
+}
+
+.empty-state p {
+    color: #999;
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}

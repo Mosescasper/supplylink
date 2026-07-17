@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}{{ supplier.name }}{% endblock %}
+
+{% block page_title %}{{ supplier.name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('supplier_edit', supplier_id=supplier.id) }}" class="btn">Edit Supplier</a>
+<a href="{{ url_for('supplier_list') }}" class="btn">Back to Suppliers</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>Contact Person</th>
+                <td>{{ supplier.contact_person or "—" }}</td>
+            </tr>
+            <tr>
+                <th>Phone</th>
+                <td>{{ supplier.phone or "—" }}</td>
+            </tr>
+            <tr>
+                <th>Email</th>
+                <td>{{ supplier.email or "—" }}</td>
+            </tr>
+            <tr>
+                <th>Address</th>
+                <td>{{ supplier.address or "—" }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Delivery History — FEFO Order</h3>
+    <p class="form-hint">
+        Every batch this supplier has delivered, sorted by expiry date — soonest-expiring first,
+        so you know what to move or dispense before it's at risk.
+    </p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Batch Number</th>
+                <th>Expiry Date</th>
+                <th>Qty Delivered</th>
+                <th>Unit Price (KES)</th>
+                <th>Delivery No.</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in delivery_lines %}
+            <tr>
+                <td>{{ line.item.name if line.item else "—" }}</td>
+                <td>{{ line.batch_number }}</td>
+                <td>{{ line.expiry_date.strftime("%d %b %Y") if line.expiry_date else "—" }}</td>
+                <td>{{ line.quantity_delivered }}</td>
+                <td>{{ "%.2f"|format(line.unit_price) }}</td>
+                <td>
+                    <a href="{{ url_for('delivery_detail', delivery_id=line.delivery_id) }}">
+                        {{ line.delivery.delivery_number }}
+                    </a>
+                </td>
+                <td>
+                    {% if line.expiry_date and line.expiry_date < today %}
+                    <span class="badge badge-danger">Expired</span>
+                    {% elif line.expiry_date and line.expiry_date <= near_expiry_cutoff %}
+                    <span class="badge badge-warning">Near Expiry</span>
+                    {% else %}
+                    <span class="badge badge-success">OK</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">No deliveries recorded from this supplier yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3 class="section-heading">Items Supplied</h3>
+    <p class="form-hint">
+        Items this supplier typically stocks, with their usual price and lead time —
+        used as a reference when creating purchase orders.
+    </p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Typical Unit Cost (KES)</th>
+                <th>Lead Time (days)</th>
+                <th>Notes</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in supplier.catalog_items %}
+            <tr>
+                <td>{{ entry.item.name }}</td>
+                <td>{{ "%.2f"|format(entry.typical_unit_cost) if entry.typical_unit_cost else "—" }}</td>
+                <td>{{ entry.lead_time_days or "—" }}</td>
+                <td>{{ entry.notes or "—" }}</td>
+                <td>
+                    <form method="POST"
+                          action="{{ url_for('supplier_catalog_delete', supplier_id=supplier.id, entry_id=entry.id) }}"
+                          onsubmit="return confirm('Remove this item from the catalog?');">
+                        <button type="submit" class="btn btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="empty-state">No items recorded for this supplier yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="section-heading">Add Item to Catalog</h3>
+
+    <form method="POST" action="{{ url_for('supplier_catalog_add', supplier_id=supplier.id) }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="item_id">Item</label>
+                <select id="item_id" name="item_id" class="form-control" required>
+                    <option value="">-- Select Item --</option>
+                    {% for item in items %}
+                    <option value="{{ item.id }}">{{ item.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="typical_unit_cost">Typical Unit Cost (KES)</label>
+                <input type="number" id="typical_unit_cost" name="typical_unit_cost"
+                       class="form-control" step="0.01" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="lead_time_days">Lead Time (days)</label>
+                <input type="number" id="lead_time_days" name="lead_time_days"
+                       class="form-control" step="1" min="0">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <input type="text" id="notes" name="notes" class="form-control">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add to Catalog</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

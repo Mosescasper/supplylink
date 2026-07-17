@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}{{ patient.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>{{ patient.name }}</h1>
+        <p class="page-subtitle"><code>{{ patient.ip_op_number }}</code> · {{ patient.patient_type }}</p>
+    </div>
+    <div class="page-header-actions">
+        {% if current_user.role in ('admin', 'doctor') %}
+        <a href="{{ url_for('prescription_new', patient_id=patient.id) }}" class="btn btn-primary">
+            <span class="btn-icon">📝</span>
+            <span class="btn-label">Write Prescription</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3 class="card-heading">Patient Details</h3>
+        <table class="kv-table">
+            <tr><th>Gender</th><td>{{ patient.gender or "—" }}</td></tr>
+            <tr><th>Age</th><td>{{ patient.age or "—" }}</td></tr>
+            <tr><th>Weight</th><td>{{ patient.weight ~ " kg" if patient.weight else "—" }}</td></tr>
+            <tr><th>Height</th><td>{{ patient.height ~ " cm" if patient.height else "—" }}</td></tr>
+            <tr><th>Contact</th><td>{{ patient.contact or "—" }}</td></tr>
+            <tr><th>Clinic / Ward</th><td>{{ patient.clinic_ward_unit or "—" }}</td></tr>
+        </table>
+
+        {% if patient.drug_allergies %}
+        <div class="allergy-banner">
+            <strong>⚠ Known Allergies:</strong> {{ patient.drug_allergies }}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-heading">Prescriptions</h3>
+        {% if prescriptions %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Prescriber</th>
+                    <th>Status</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rx in prescriptions %}
+                <tr>
+                    <td>{{ rx.date.strftime("%d %b %Y") if rx.date else "—" }}</td>
+                    <td>Dr. {{ rx.prescriber_name }}</td>
+                    <td>
+                        {% if rx.status == "Dispensed" %}
+                        <span class="badge badge-success">Dispensed</span>
+                        {% elif rx.status == "Partially Dispensed" %}
+                        <span class="badge badge-warning">Partially Dispensed</span>
+                        {% else %}
+                        <span class="badge badge-pending">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <a href="{{ url_for('prescription_detail', prescription_id=rx.id) }}" class="btn btn-sm btn-outline">View</a>
+                        {% if rx.status != "Dispensed" and current_user.role in ('admin', 'pharmacist') %}
+                        <a href="{{ url_for('prescription_dispense', prescription_id=rx.id) }}" class="btn btn-sm btn-primary">Dispense</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-hint">No prescriptions yet for this patient.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header-content h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 2rem;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.card-heading {
+    margin: 0 0 1rem 0;
+    color: #3fcf5f;
+    font-size: 1.05rem;
+}
+
+.kv-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.kv-table th {
+    text-align: left;
+    color: #888;
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+    width: 40%;
+    vertical-align: top;
+}
+
+.kv-table td {
+    color: #ccc;
+    padding: 0.5rem 0;
+    font-size: 0.92rem;
+}
+
+.allergy-banner {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 0.25rem;
+    color: #f87171;
+    font-size: 0.88rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+}
+
+.table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #3fcf5f;
+    border-bottom: 2px solid #333;
+    font-size: 0.85rem;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #292929;
+    font-size: 0.9rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(63, 207, 95, 0.15);
+    color: #3fcf5f;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-pending {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #3fcf5f;
+    border: 1px solid #3fcf5f;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+.empty-hint {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+code {
+    background: #222;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Dispense — {{ prescription.patient.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dispense Prescription</h1>
+    <p class="page-subtitle">
+        {{ prescription.patient.name }} · <code>{{ prescription.patient.ip_op_number }}</code>
+        · Written by Dr. {{ prescription.prescriber_name }} on {{ prescription.date.strftime("%d %b %Y") if prescription.date else "—" }}
+        · Dispensing from <strong>{{ location }}</strong>
+    </p>
+</div>
+
+<div class="card">
+    <p class="form-hint">
+        These are the lines Dr. {{ prescription.prescriber_name }} prescribed. Adjust the quantity below only if
+        you're giving out less than what was prescribed (e.g. partial stock availability) — everything else is
+        already filled in.
+    </p>
+
+    <form method="POST">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Dose</th>
+                    <th>Route</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                    <th>Prescribed</th>
+                    <th>Already Given</th>
+                    <th>Dispense Now</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in prescription.lines %}
+                {% set remaining = (line.quantity_prescribed or 0) - (line.quantity_dispensed or 0) %}
+                <tr>
+                    <td><strong>{{ line.medicine_name }}</strong></td>
+                    <td>{{ line.dose or "—" }}</td>
+                    <td>{{ line.route or "—" }}</td>
+                    <td>{{ line.frequency or "—" }}</td>
+                    <td>{{ line.duration or "—" }}</td>
+                    <td>{{ line.quantity_prescribed or 0 }}</td>
+                    <td>{{ line.quantity_dispensed or 0 }}</td>
+                    <td>
+                        {% if remaining > 0 %}
+                        <input type="number" name="dispense_{{ line.id }}" class="form-control"
+                               step="0.01" min="0" max="{{ remaining }}" value="{{ remaining }}">
+                        {% else %}
+                        <span class="line-complete">✓ Complete</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Confirm &amp; Deduct Stock</button>
+            <a href="{{ url_for('prescription_detail', prescription_id=prescription.id) }}" class="btn">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.9rem;
+    color: #3fcf5f;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.form-hint {
+    color: #999;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ccc;
+    margin-bottom: 1.5rem;
+}
+
+.table th {
+    padding: 0.7rem;
+    text-align: left;
+    font-weight: 600;
+    color: #3fcf5f;
+    border-bottom: 2px solid #333;
+    font-size: 0.8rem;
+}
+
+.table td {
+    padding: 0.6rem 0.7rem;
+    border-bottom: 1px solid #292929;
+    font-size: 0.88rem;
+}
+
+.form-control {
+    width: 100px;
+    padding: 0.5rem;
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
+    font-size: 0.88rem;
+    font-family: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3fcf5f;
+    background: #262626;
+}
+
+.line-complete {
+    color: #3fcf5f;
+    font-size: 0.85rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    padding: 0.7rem 1.4rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    background: #333;
+    color: #ccc;
+}
+
+.btn-primary {
+    background: #3fcf5f;
+    color: #0a0f0c;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+code {
+    background: #222;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 0.82rem;
+}
+</style>
+{% endblock %}

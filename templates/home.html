@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}SupplyLink — Hospital Pharmacy & Supply Chain{% endblock %}
+{% block content %}
+<style>
+  .lp { max-width: 1320px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  /* ---- Nav ---- */
+  .lp-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5rem 0 3rem; min-height: 90px;
+  }
+  .lp-brand { display: flex; align-items: center; gap: .9rem; }
+  .lp-brand .icon { font-size: 1.6rem; }
+  .lp-brand .name { font-weight: 700; font-size: 1.4rem; letter-spacing: .02em; }
+  .lp-logo-chip {
+    background: #ffffff; border-radius: 14px; padding: 8px 12px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .lp-logo-chip img { height: 64px; width: auto; display: block; }
+  .lp-nav-actions { display: flex; gap: .75rem; }
+  .lp-btn {
+    padding: .55rem 1.2rem; border-radius: 8px; font-weight: 600;
+    font-size: .92rem; text-decoration: none; display: inline-block;
+    transition: transform .15s ease, opacity .15s ease;
+  }
+  .lp-btn:hover { transform: translateY(-1px); }
+  .lp-btn-ghost { color: #e2e8f0; border: 1px solid rgba(255,255,255,.16); }
+  .lp-btn-solid { background: var(--cyan, #2dd4ee); color: #06111a; }
+
+  /* ---- Hero ---- */
+  .lp-hero-wrap {
+    display: grid; grid-template-columns: 1fr 1.15fr; align-items: center;
+    gap: 3rem; padding: 2rem 0 3.5rem;
+  }
+  @media (max-width: 860px) { .lp-hero-wrap { grid-template-columns: 1fr; } }
+  .lp-hero { text-align: left; padding: 0; }
+  .lp-hero-actions, .lp-subnote { justify-content: flex-start; text-align: left; }
+  .lp-hero-photo {
+    width: 100%; aspect-ratio: 1/1; border-radius: 20px; overflow: hidden;
+    position: relative; border: 1px solid rgba(255,255,255,.08);
+  }
+  .lp-hero-photo img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: saturate(.85) brightness(.55);
+  }
+  .lp-hero-photo::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(11,18,32,.15), rgba(11,18,32,.75)),
+                linear-gradient(90deg, rgba(45,212,238,.18), rgba(184,102,255,.18));
+  }
+  .lp-hero-photo-caption {
+    position: absolute; left: 16px; bottom: 14px; z-index: 2;
+    font-size: .78rem; color: #cbd5e1; background: rgba(11,18,32,.55);
+    padding: .3rem .7rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.1);
+  }
+  .lp-eyebrow {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-size: .78rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--cyan, #2dd4ee); border: 1px solid rgba(45,212,238,.35);
+    background: rgba(45,212,238,.08); padding: .35rem .9rem; border-radius: 999px;
+    margin-bottom: 1.5rem;
+  }
+  .lp-eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 8px #34d399;
+  }
+  .lp-hero h1 {
+    font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.15; font-weight: 800;
+    margin: 0 0 1.1rem; letter-spacing: -.01em;
+  }
+  .lp-hero h1 span { color: var(--cyan, #2dd4ee); }
+  .lp-hero p {
+    max-width: 520px; margin: 0 0 2rem; color: #9aa5b1;
+    font-size: 1.08rem; line-height: 1.6;
+  }
+  .lp-hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .lp-btn-lg { padding: .8rem 1.7rem; font-size: 1rem; border-radius: 10px; }
+
+  .lp-subnote { margin-top: 1.25rem; font-size: .85rem; color: #6b7684; }
+
+  /* ---- Flow strip ---- */
+  .lp-flow {
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+    flex-wrap: wrap; margin: 3rem 0; padding: 1.5rem;
+    border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  }
+  .lp-flow-step {
+    font-size: .85rem; font-weight: 600; color: #cbd5e1;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    padding: .5rem 1rem; border-radius: 999px; white-space: nowrap;
+  }
+  .lp-flow-arrow { color: var(--purple, #b866ff); font-size: 1.1rem; }
+
+  /* ---- Feature grid ---- */
+  .lp-section-title { text-align: center; margin: 4rem 0 2.5rem; }
+  .lp-section-title h2 { font-size: 1.8rem; font-weight: 800; margin: 0 0 .5rem; }
+  .lp-section-title p { color: #9aa5b1; margin: 0; }
+
+  .lp-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.1rem;
+  }
+  .lp-card {
+    border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+    padding: 1.4rem; background: rgba(255,255,255,.02);
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .lp-card:hover { border-color: rgba(45,212,238,.35); transform: translateY(-2px); }
+  .lp-card .ic { font-size: 1.5rem; margin-bottom: .7rem; display: block; }
+  .lp-card h3 { font-size: 1.02rem; margin: 0 0 .5rem; }
+  .lp-card p { font-size: .88rem; color: #9aa5b1; line-height: 1.55; margin: 0; }
+
+  /* ---- Stats ---- */
+  .lp-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem; margin: 4rem 0;
+  }
+  .lp-stat {
+    text-align: center; padding: 1.5rem 1rem; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);
+  }
+  .lp-stat .num { font-size: 1.7rem; font-weight: 800; color: var(--cyan, #2dd4ee); }
+  .lp-stat .lbl { font-size: .8rem; color: #9aa5b1; margin-top: .25rem; }
+
+  /* ---- CTA band ---- */
+  .lp-cta {
+    text-align: center; margin: 4rem 0 2rem; padding: 5rem 1.5rem;
+    min-height: 360px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 20px; border: 1px solid rgba(184,102,255,.25);
+    position: relative; overflow: hidden; isolation: isolate;
+  }
+  .lp-cta::before {
+    content: ""; position: absolute; inset: 0; z-index: -2;
+    background-image: url('https://mkrh.go.ke/storage/media/media_1753690308_688730c4c4497.JPG');
+    background-size: cover; background-position: center;
+    filter: saturate(.7) brightness(.4);
+  }
+  .lp-cta::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(11,18,32,.55), rgba(11,18,32,.85)),
+                radial-gradient(ellipse at center, rgba(184,102,255,.12), transparent 70%);
+  }
+  .lp-cta h2 { font-size: 2rem; margin: 0 0 .7rem; }
+  .lp-cta p { color: #cbd5e1; margin: 0 0 1.75rem; font-size: 1.05rem; }
+
+  .lp-footer {
+    text-align: center; font-size: .8rem; color: #6b7684;
+    padding-top: 2rem; border-top: 1px solid rgba(255,255,255,.06);
+  }
+</style>
+
+<div class="lp">
+
+  <nav class="lp-nav">
+    <div class="lp-brand">
+      <div class="lp-logo-chip">
+        <img src="https://mkrh.go.ke/img/mwailogo.png" alt="MKRH logo">
+      </div>
+      <span class="name">SupplyLink</span>
+    </div>
+    <div class="lp-nav-actions">
+      <a href="{{ url_for('login') }}" class="lp-btn lp-btn-ghost">Log in</a>
+      <a href="{{ url_for('register') }}" class="lp-btn lp-btn-solid">Register</a>
+    </div>
+  </nav>
+
+  <div class="lp-hero-wrap">
+    <header class="lp-hero">
+      <span class="lp-eyebrow"><span class="dot"></span>Hospital Pharmacy &amp; Supply Chain System</span>
+      <h1>Run your drug store, requisitions,<br>and dispensing <span>on one system</span></h1>
+      <p>
+        SupplyLink digitises the S11 Counter Requisition and Issue Voucher, the
+        MOH Stock Control Card, and the hospital Prescription pad — end to end,
+        from supplier delivery to patient dispensing — without changing the
+        workflow your staff already know.
+      </p>
+      <div class="lp-hero-actions">
+        <a href="{{ url_for('register') }}" class="lp-btn lp-btn-solid lp-btn-lg">Get started</a>
+        <a href="{{ url_for('login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">I have an account</a>
+      </div>
+      <p class="lp-subnote">Built for Mwai Kibaki Referral Hospital, Othaya</p>
+    </header>
+
+    <div class="lp-hero-photo">
+      <img src="https://mkrh.go.ke/storage/media/media_1753690446_6887314e5d362.jpg" alt="Mwai Kibaki Referral Hospital facility">
+      <span class="lp-hero-photo-caption">Mwai Kibaki Referral Hospital, Othaya</span>
+    </div>
+  </div>
+
+  <div class="lp-flow">
+    <span class="lp-flow-step">🚚 Supplier</span>
+    <span class="lp-flow-arrow">→</span>
+    <span class="lp-flow-step">📦 Drug Store</span>
+    <span class="lp-flow-arrow">→</span>
+    <span class="lp-flow-step">🏬 Holding</span>
+    <span class="lp-flow-arrow">→</span>
+    <span class="lp-flow-step">💊 Pharmacy</span>
+    <span class="lp-flow-arrow">→</span>
+    <span class="lp-flow-step">🧑‍⚕️ Patient</span>
+  </div>
+
+  <div class="lp-stats">
+    <div class="lp-stat"><div class="num">3</div><div class="lbl">Stock locations tracked</div></div>
+    <div class="lp-stat"><div class="num">FEFO</div><div class="lbl">Expiry-based issuing</div></div>
+    <div class="lp-stat"><div class="num">6 mo</div><div class="lbl">Early expiry alerts</div></div>
+    <div class="lp-stat"><div class="num">100%</div><div class="lbl">Movements audit-logged</div></div>
+  </div>
+
+  <div class="lp-section-title">
+    <h2>Everything the pharmacy store needs</h2>
+    <p>Covers the full chain — inventory to procurement to patient dispensing.</p>
+  </div>
+
+  <div class="lp-grid">
+    <div class="lp-card">
+      <span class="ic">📦</span>
+      <h3>Inventory &amp; Batch Tracking</h3>
+      <p>SKU, category, supplier, and unit cost per item, with batch-level receipt and expiry tracking mirroring the MOH Stock Control Card.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">🏬</span>
+      <h3>Drug Store, Holding &amp; Pharmacy</h3>
+      <p>Three explicit stock locations with logged transfers — date, reference, running balance, issuing and receiving officer.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">🚚</span>
+      <h3>Suppliers &amp; Procurement</h3>
+      <p>Supplier catalog, annual procurement plans, and purchase orders with Draft / Sent / Received / Cancelled statuses.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">🧾</span>
+      <h3>S11 Requisitions</h3>
+      <p>Digital Counter Requisition and Issue Voucher with the same approval chain — Requested, Approved, Issued, Received.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">💊</span>
+      <h3>Outpatient &amp; Inpatient Dispensing</h3>
+      <p>Prescriptions captured on the same fields as the paper pad, dispensing gated on valid OP/IP registration.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">🔁</span>
+      <h3>Discharge &amp; Refunds</h3>
+      <p>Auto-calculates undepleted-stock refunds at discharge, or issues a continuation prescription when fully used.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">⏰</span>
+      <h3>Expiry &amp; Low-Stock Alerts</h3>
+      <p>Automated FEFO alerts fire 6 months ahead of expiry; reorder levels calculated from average monthly consumption.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">📊</span>
+      <h3>Reports &amp; Analytics</h3>
+      <p>CSV exports plus in-app charts — stock value trend, procurement vs. consumption, expiry timeline, and top movers.</p>
+    </div>
+    <div class="lp-card">
+      <span class="ic">🔐</span>
+      <h3>Role-Based Access</h3>
+      <p>Admin, Store Officer, and Pharmacist roles, each scoped to the locations and actions relevant to their job.</p>
+    </div>
+  </div>
+
+  <div class="lp-cta">
+    <h2>Ready to move off the paper trail?</h2>
+    <p>Create an account to start tracking stock, requisitions, and dispensing today.</p>
+    <a href="{{ url_for('register') }}" class="lp-btn lp-btn-solid lp-btn-lg">Create your account</a>
+  </div>
+
+  <div class="lp-footer">
+    SupplyLink — Hospital Pharmacy &amp; Drug Supply Chain Management System · Mwai Kibaki Referral Hospital, Othaya
+  </div>
+
+</div>
+{% endblock %}
