@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block page_title %}Appointments{% endblock %}
+
+{% block content %}
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Patient</th>
+                <th>Clinic/Ward</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>{{ a.scheduled_date.strftime('%d %b %Y') }}</td>
+                <td>{{ a.scheduled_time or '—' }}</td>
+                <td><a href="{{ url_for('patient_detail', patient_id=a.patient_id) }}">{{ a.patient.name }}</a></td>
+                <td>{{ a.clinic_ward_unit or '—' }}</td>
+                <td>{{ a.reason or '—' }}</td>
+                <td>
+                    <span class="status-tag status-tag--{{ a.status|lower|replace(' ', '-') }}">{{ a.status }}</span>
+                </td>
+                <td class="text-right">
+                    {% if a.status == 'Scheduled' and current_user.role in ('admin', 'registry') %}
+                    <form method="POST" action="{{ url_for('appointment_status_update', appointment_id=a.id) }}" style="display:inline;">
+                        <input type="hidden" name="status" value="Completed">
+                        <button type="submit" class="btn btn-sm btn-primary">Mark Completed</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('appointment_status_update', appointment_id=a.id) }}" style="display:inline;">
+                        <input type="hidden" name="status" value="Cancelled">
+                        <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="empty-state">No appointments found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

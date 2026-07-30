@@ -1,0 +1,26 @@
+# Virtual environment
+venv/
+
+# Environment variables / secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Flask instance folder (may contain local config/db files)
+instance/
+
+# Uploaded files — these are real data, not code
+uploads/
+static/uploads/
+
+# Database dump files
+*.dump
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/

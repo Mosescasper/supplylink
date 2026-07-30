@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Purchase Requisitions{% endblock %}
+{% block page_title %}Purchase Requisitions{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('purchase_requisition_new') }}" class="btn btn-primary">+ New Purchase Request</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="padding:0; overflow-x:auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>PR No.</th>
+        <th>Department</th>
+        <th>Requested By</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pr in prs %}
+      <tr>
+        <td>{{ pr.pr_number }}</td>
+        <td>{{ pr.department.name if pr.department else '—' }}</td>
+        <td>{{ pr.requested_by.name if pr.requested_by else '—' }}</td>
+        <td><span class="badge badge-{{ 'success' if pr.status == 'Converted' else 'danger' if pr.status == 'Rejected' else 'warning' if pr.status == 'Pending' else 'info' }}">{{ pr.status }}</span></td>
+        <td>{{ pr.created_at.strftime('%d %b %Y') }}</td>
+        <td><a href="{{ url_for('purchase_requisition_detail', pr_id=pr.id) }}" class="btn btn-sm">View</a></td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="empty-state">No purchase requisitions yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

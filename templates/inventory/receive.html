@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Receive Stock{% endblock %}
+
+{% block page_title %}Receive Stock — Supply Chain Store{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('inventory_batches') }}" class="btn">Back to Batches</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <p class="form-hint">
+        Manual/ad-hoc receipt of stock, outside a purchase order (e.g. a
+        donation, correction, or emergency top-up). This adds a new batch
+        directly into the Supply Chain Store — transfer it onward to Drug
+        Store or another location afterwards from the item's detail page.
+    </p>
+
+    <form method="POST" action="{{ url_for('batch_receive') }}">
+
+        <div class="form-group">
+            <label for="item_id">Item</label>
+            <select id="item_id" name="item_id" class="form-control" required>
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.sku }} — {{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="batch_number">Batch Number</label>
+                <input type="text" id="batch_number" name="batch_number" class="form-control"
+                       placeholder="e.g. B-2026-0143" required>
+            </div>
+
+            <div class="form-group">
+                <label for="expiry_date">Expiry Date</label>
+                <input type="date" id="expiry_date" name="expiry_date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">Quantity</label>
+                <input type="number" id="quantity" name="quantity" class="form-control"
+                       step="0.01" min="0" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="reference">Reference / Reason</label>
+            <input type="text" id="reference" name="reference" class="form-control"
+                   placeholder="e.g. Donation from XYZ, stock correction">
+            <small class="form-hint">
+                Leave blank to record this simply as "Manual receipt" in the stock movement log.
+            </small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Confirm Receipt into Supply Chain Store</button>
+            <a href="{{ url_for('inventory_batches') }}" class="btn">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

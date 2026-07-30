@@ -76,7 +76,9 @@
 .dash-role-badge--admin        { color: var(--dash-yellow); border-color: color-mix(in srgb, var(--dash-yellow) 40%, transparent); }
 .dash-role-badge--store_officer{ color: var(--dash-cyan);   border-color: color-mix(in srgb, var(--dash-cyan) 40%, transparent); }
 .dash-role-badge--pharmacist   { color: var(--dash-magenta);border-color: color-mix(in srgb, var(--dash-magenta) 40%, transparent); }
-
+.dash-role-badge--supply_chain { color: var(--dash-purple); border-color: color-mix(in srgb, var(--dash-purple) 40%, transparent); }
+.dash-role-badge--doctor       { color: var(--dash-green);  border-color: color-mix(in srgb, var(--dash-green) 40%, transparent); }
+.dash-role-badge--registry { color: var(--dash-cyan); border-color: color-mix(in srgb, var(--dash-cyan) 40%, transparent); }
 .dash-readout {
   display: inline-flex;
   align-items: center;
@@ -246,7 +248,7 @@
   padding: 4px 0 16px;
 }
 
-/* ---------------------------------- Chart panels (store_officer) -------- */
+/* ---------------------------------- Chart panels ------------------------ */
 
 .panel-chart-canvas {
   max-height: 220px;
@@ -257,6 +259,18 @@
   font-size: 12px;
   color: var(--dash-text-dim);
   margin: -4px 0 16px;
+}
+
+/* Big centered percentage above the fill-rate trend chart, in the panel's
+   own accent color (panel--magenta) so it reads like a KPI number. */
+.fill-rate-kpi {
+  font-family: var(--dash-font-mono);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--panel-accent, var(--dash-magenta));
+  text-shadow: 0 0 20px color-mix(in srgb, var(--panel-accent, var(--dash-magenta)) 45%, transparent);
+  margin-bottom: 14px;
 }
 
 /* ---------------------------------- Tables ------------------------------ */
@@ -312,6 +326,7 @@
 .movement-tag--transfer        { color: var(--dash-cyan); }
 .movement-tag--adjustment      { color: var(--dash-purple); }
 .movement-tag--refund_reversal { color: var(--dash-magenta); }
+.movement-tag--return          { color: var(--dash-cyan); }
 
 .status-tag--draft, .status-tag--pending   { color: var(--dash-yellow); }
 .status-tag--sent, .status-tag--approved   { color: var(--dash-cyan); }
@@ -339,6 +354,89 @@
   margin: 0 0 16px;
 }
 
+/* ---------------------------------- Critical alert banner ---------------- */
+/* Admin/store_officer only: surfaces batches expiring within 30 days and
+   items critically low on stock, above everything else on the dashboard.
+   Reuses dash-pulse and the same neon-glow language as .kpi-card/.panel,
+   but with a persistent, more insistent pulse on the whole banner itself
+   (not just a status dot) since this needs to actually grab attention. */
+
+.critical-alert-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 860px) {
+  .critical-alert-row { grid-template-columns: 1fr; }
+}
+
+.critical-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  background:
+    radial-gradient(120% 160% at 0% 0%, color-mix(in srgb, var(--alert-accent) 22%, transparent), transparent 60%),
+    var(--dash-panel-bg);
+  border: 1.5px solid var(--alert-accent);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--alert-accent) 40%, transparent),
+    0 0 22px 0 color-mix(in srgb, var(--alert-accent) 70%, transparent),
+    0 0 48px -6px color-mix(in srgb, var(--alert-accent) 90%, transparent);
+  animation: critical-alert-pulse 1.1s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+
+.critical-alert-banner:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.critical-alert-banner--expiry { --alert-accent: var(--dash-red); }
+.critical-alert-banner--stock  { --alert-accent: var(--dash-orange); }
+
+.critical-alert-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--alert-accent));
+  animation: critical-alert-icon-pulse 1.1s ease-in-out infinite;
+}
+
+.critical-alert-text {
+  font-family: var(--dash-font-mono);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  color: var(--alert-accent);
+  font-weight: 700;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--alert-accent) 55%, transparent);
+}
+
+@keyframes critical-alert-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--alert-accent) 40%, transparent),
+      0 0 22px 0 color-mix(in srgb, var(--alert-accent) 70%, transparent),
+      0 0 48px -6px color-mix(in srgb, var(--alert-accent) 90%, transparent);
+    border-color: color-mix(in srgb, var(--alert-accent) 80%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--alert-accent) 70%, transparent),
+      0 0 38px 6px color-mix(in srgb, var(--alert-accent) 95%, transparent),
+      0 0 80px 4px color-mix(in srgb, var(--alert-accent) 55%, transparent);
+    border-color: var(--alert-accent);
+  }
+}
+
+@keyframes critical-alert-icon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--alert-accent)); transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 14px var(--alert-accent)); transform: scale(1.12); }
+}
+
 /* ---------------------------------- Responsive --------------------------- */
 
 @media (max-width: 1200px) {
@@ -358,7 +456,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kpi-dot, .dash-role-badge::before, .dash-readout::before {
+  .kpi-dot, .dash-role-badge::before, .dash-readout::before, .critical-alert-banner {
     animation: none;
   }
 }

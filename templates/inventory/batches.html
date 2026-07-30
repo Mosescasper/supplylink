@@ -21,8 +21,12 @@
 
         <div class="form-group">
             <label for="location">Location</label>
-            <input type="text" id="location" name="location" class="form-control"
-                   placeholder="e.g. Drug Store" value="{{ request.args.get('location', '') }}">
+            <select id="location" name="location" class="form-control">
+                <option value="">All locations</option>
+                {% for loc in location_options %}
+                <option value="{{ loc }}" {{ "selected" if request.args.get('location') == loc }}>{{ loc }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div class="form-group">

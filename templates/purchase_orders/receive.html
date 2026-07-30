@@ -12,7 +12,7 @@
 <div class="card">
     <p class="form-hint">
         Enter the batch number, expiry date, and quantity received for each line.
-        Leave a line blank to skip it — it will not be added to Drug Store stock.
+        Leave a line blank to skip it — it will not be added to Supply Chain Store stock.
     </p>
 
     <form method="POST" action="{{ url_for('po_receive', po_id=po.id) }}">
@@ -52,7 +52,7 @@
         </table>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Confirm Receipt into Drug Store</button>
+            <button type="submit" class="btn btn-primary">Confirm Receipt into Supply Chain Store</button>
             <a href="{{ url_for('po_detail', po_id=po.id) }}" class="btn">Cancel</a>
         </div>
 

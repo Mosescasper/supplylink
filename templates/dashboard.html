@@ -12,9 +12,26 @@
 {% endblock %}
 
 {% block content %}
-<div class="dash">
+<div class="dash" data-locations="{{ location_scope_param }}">
 
-{% if role != 'doctor' %}
+{% if role in ['admin', 'store_officer'] and (critical_expiry_count or critical_low_stock_count) %}
+<div class="critical-alert-row">
+  {% if critical_expiry_count %}
+  <a href="{{ url_for('expiry_alerts', urgency='critical') }}" class="critical-alert-banner critical-alert-banner--expiry">
+    <span class="critical-alert-icon">⏰</span>
+    <span class="critical-alert-text">{{ critical_expiry_count }} batch{{ 'es' if critical_expiry_count != 1 else '' }} expiring within 30 days</span>
+  </a>
+  {% endif %}
+  {% if critical_low_stock_count %}
+  <a href="{{ url_for('inventory_list') }}" class="critical-alert-banner critical-alert-banner--stock">
+    <span class="critical-alert-icon">📉</span>
+    <span class="critical-alert-text">{{ critical_low_stock_count }} item{{ 's' if critical_low_stock_count != 1 else '' }} critically low on stock</span>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if role not in ['doctor', 'registry'] %}
 
   {# ================= ROW 1 — CORE KPIs ================= #}
   <div class="kpi-row">
@@ -45,6 +62,7 @@
       <div class="kpi-sub">at or below reorder</div>
     </a>
 
+    {% if role not in ['pharmacist', 'hod_pharmacy'] %}
     <a href="{{ url_for('po_list') }}" class="kpi-card kpi-card--purple">
       <div class="kpi-top">
         <span class="kpi-label">Open POs</span>
@@ -53,6 +71,7 @@
       <div class="kpi-value">{{ kpis.open_purchase_orders }}</div>
       <div class="kpi-sub">draft / sent</div>
     </a>
+    {% endif %}
 
     <a href="{{ url_for('requisition_list') }}" class="kpi-card kpi-card--magenta">
       <div class="kpi-top">
@@ -60,7 +79,12 @@
         <span class="kpi-dot"></span>
       </div>
       <div class="kpi-value">{{ kpis.pending_requisitions }}</div>
-      <div class="kpi-sub">awaiting approval</div>
+      <div class="kpi-sub">
+        {% if role == 'store_officer' %}Drug Store
+        {% elif role == 'hod_pharmacy' %}Holding — awaiting your approval
+        {% elif role == 'pharmacist' %}raised by you
+        {% else %}awaiting approval{% endif %}
+      </div>
     </a>
   </div>
 
@@ -74,22 +98,31 @@
       <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(kpis.total_stock_value) }}</div>
       <div class="kpi-sub">
         {% if role == 'store_officer' %}across Drug Store &amp; Holding
-        {% elif role == 'pharmacist' %}across Holding, Outpatient &amp; Inpatient Pharmacy
+        {% elif role == 'hod_pharmacy' %}across Holding, Outpatient &amp; Inpatient Pharmacy
+        {% elif role == 'pharmacist' %}{{ pharmacy_scope_label }}
+        {% elif role == 'supply_chain' %}across Supply Chain Store
         {% else %}across all locations{% endif %}
       </div>
     </div>
   </div>
 
-  {# ================= ROW 3 — CHARTS (admin / store_officer / pharmacist) =================
-     Replaces the old full-table Expiry Alert Panel / Low-Stock Alert Panel for every
-     non-doctor role — they were taking up too much vertical space. The Near Expiry and
-     Low Stock KPI cards above already link to the detailed pages for anyone who needs
-     the full list. #}
+  {# ================= ROW 3 — CHARTS (role-scoped) =================
+     Replaces the old full-table Expiry Alert Panel / Low-Stock Alert Panel.
+     admin sees system-wide figures, store_officer sees Drug Store only,
+     pharmacist sees Holding/Outpatient/Inpatient only (via the
+     data-locations attribute on .dash above, read by dashboard_charts.js).
+     The Near Expiry and Low Stock KPI cards above still link to the full
+     detailed lists for anyone who needs them. #}
   <div class="panel-row">
     <div class="panel panel--cyan">
       <div class="panel-header">
         <h2 class="panel-title">Stock Value by Location</h2>
-        <span class="panel-tag">DRUG STORE &middot; HOLDING &middot; PHARMACY</span>
+        <span class="panel-tag">
+          {% if role == 'store_officer' %}DRUG STORE
+          {% elif role == 'hod_pharmacy' %}HOLDING / OP / IP
+          {% elif role == 'pharmacist' %}{{ pharmacy_scope_tag }}
+          {% else %}ALL LOCATIONS{% endif %}
+        </span>
       </div>
       <canvas id="chart-stock-by-location" class="panel-chart-canvas"></canvas>
     </div>
@@ -105,6 +138,17 @@
   <p class="panel-hint">
     Need the full list? The Near Expiry and Low Stock cards above link straight to the detailed pages.
   </p>
+
+  {% if role in ['pharmacist', 'hod_pharmacy', 'admin'] %}
+  <div class="panel panel--full panel--magenta">
+    <div class="panel-header">
+      <h2 class="panel-title">Prescription Fill Rate</h2>
+      <span class="panel-tag">DISPENSED &divide; PRESCRIBED &middot; LAST 6 MONTHS</span>
+    </div>
+    <div class="fill-rate-kpi" id="fill-rate-kpi">—%</div>
+    <canvas id="chart-fill-rate" class="panel-chart-canvas"></canvas>
+  </div>
+  {% endif %}
 
   {# ================= ROW 4 — RECENT MOVEMENT ================= #}
   <div class="panel panel--full panel--slate">
@@ -207,6 +251,61 @@
         {% endif %}
       </div>
     </div>
+
+    <div class="panel-row">
+      <div class="panel panel--cyan">
+        <div class="panel-header">
+          <h2 class="panel-title">Order Fulfillment</h2>
+          <span class="panel-tag">ORDERED VS. RECEIVED</span>
+        </div>
+        {% if po_fulfillment %}
+        <table class="panel-table">
+          <thead><tr><th>PO No.</th><th>Supplier</th><th>Ordered</th><th>Received</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for po in po_fulfillment %}
+            <tr>
+              <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+              <td>{{ po.supplier.name }}</td>
+              <td>{{ po.total_ordered_quantity|int }}</td>
+              <td>{{ po.total_received_quantity|int }}</td>
+              <td class="{{ 'variance-neg' if po.total_received_quantity < po.total_ordered_quantity else 'variance-pos' }}">
+                {{ (po.total_received_quantity - po.total_ordered_quantity)|int }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No received purchase orders yet.</p>
+        {% endif %}
+      </div>
+      <div class="panel panel--green">
+        <div class="panel-header">
+          <h2 class="panel-title">Requisition Fulfillment</h2>
+          <span class="panel-tag">REQUIRED VS. ISSUED</span>
+        </div>
+        {% if requisition_fulfillment %}
+        <table class="panel-table">
+          <thead><tr><th>S11 No.</th><th>Department</th><th>Required</th><th>Issued</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for r in requisition_fulfillment %}
+            <tr>
+              <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+              <td>{{ r.department.name }}</td>
+              <td>{{ r.total_required_quantity|int }}</td>
+              <td>{{ r.total_issued_quantity|int }}</td>
+              <td class="{{ 'variance-neg' if r.total_issued_quantity < r.total_required_quantity else 'variance-pos' }}">
+                {{ (r.total_issued_quantity - r.total_required_quantity)|int }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No issued requisitions yet.</p>
+        {% endif %}
+      </div>
+    </div>
   </div>
   {% endif %}
 
@@ -253,7 +352,7 @@
       <div class="panel panel--magenta">
         <div class="panel-header">
           <h2 class="panel-title">Requisitions to Action</h2>
-          <span class="panel-tag">DRUG STORE / HOLDING</span>
+          <span class="panel-tag">DRUG STORE</span>
         </div>
         {% if pending_requisitions_to_action %}
         <table class="panel-table">
@@ -271,6 +370,61 @@
         </table>
         {% else %}
         <p class="panel-empty">Nothing pending your approval.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--cyan">
+        <div class="panel-header">
+          <h2 class="panel-title">Order Fulfillment</h2>
+          <span class="panel-tag">ORDERED VS. RECEIVED</span>
+        </div>
+        {% if po_fulfillment %}
+        <table class="panel-table">
+          <thead><tr><th>PO No.</th><th>Supplier</th><th>Ordered</th><th>Received</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for po in po_fulfillment %}
+            <tr>
+              <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+              <td>{{ po.supplier.name }}</td>
+              <td>{{ po.total_ordered_quantity|int }}</td>
+              <td>{{ po.total_received_quantity|int }}</td>
+              <td class="{{ 'variance-neg' if po.total_received_quantity < po.total_ordered_quantity else 'variance-pos' }}">
+                {{ (po.total_received_quantity - po.total_ordered_quantity)|int }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No received purchase orders yet.</p>
+        {% endif %}
+      </div>
+      <div class="panel panel--green">
+        <div class="panel-header">
+          <h2 class="panel-title">Requisition Fulfillment</h2>
+          <span class="panel-tag">REQUIRED VS. ISSUED</span>
+        </div>
+        {% if requisition_fulfillment %}
+        <table class="panel-table">
+          <thead><tr><th>S11 No.</th><th>Department</th><th>Required</th><th>Issued</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for r in requisition_fulfillment %}
+            <tr>
+              <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+              <td>{{ r.department.name }}</td>
+              <td>{{ r.total_required_quantity|int }}</td>
+              <td>{{ r.total_issued_quantity|int }}</td>
+              <td class="{{ 'variance-neg' if r.total_issued_quantity < r.total_required_quantity else 'variance-pos' }}">
+                {{ (r.total_issued_quantity - r.total_required_quantity)|int }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No issued requisitions yet.</p>
         {% endif %}
       </div>
     </div>
@@ -301,28 +455,114 @@
   </div>
   {% endif %}
 
+  {% if role == 'supply_chain' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">Supply Chain Operations</h2>
+
+    <div class="kpi-row kpi-row--two">
+      <div class="kpi-card kpi-card--purple kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Suppliers</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">{{ supplier_count }}</div>
+        <div class="kpi-sub">active in catalog</div>
+      </div>
+      <div class="kpi-card kpi-card--orange kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Items Needing Reorder</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">{{ low_stock_for_reorder|length }}</div>
+        <div class="kpi-sub">at or below reorder level</div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--purple">
+        <div class="panel-header">
+          <h2 class="panel-title">Open Purchase Orders</h2>
+          <span class="panel-tag">DRAFT / SENT</span>
+        </div>
+        {% if open_pos %}
+        <table class="panel-table">
+          <thead><tr><th>PO No.</th><th>Supplier</th><th>Status</th><th>Expected</th></tr></thead>
+          <tbody>
+            {% for po in open_pos %}
+            <tr>
+              <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+              <td>{{ po.supplier.name }}</td>
+              <td><span class="status-tag status-tag--{{ po.status|lower }}">{{ po.status }}</span></td>
+              <td>{{ po.expected_date.strftime('%d %b %Y') if po.expected_date else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No open purchase orders.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--orange">
+        <div class="panel-header">
+          <h2 class="panel-title">Items to Reorder</h2>
+          <span class="panel-tag">AT / BELOW REORDER LEVEL</span>
+        </div>
+        {% if low_stock_for_reorder %}
+        <table class="panel-table">
+          <thead><tr><th>Item</th><th>SKU</th><th>On Hand</th><th>Reorder Level</th><th>Suggested Order</th></tr></thead>
+          <tbody>
+            {% for i in low_stock_for_reorder %}
+            <tr>
+              <td><a href="{{ url_for('inventory_detail', item_id=i.id) }}">{{ i.name }}</a></td>
+              <td>{{ i.sku }}</td>
+              <td>{{ i.quantity_on_hand|int }}</td>
+              <td>{{ i.reorder_level|int }}</td>
+              <td>{{ i.suggested_order_quantity|int }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">All items are above their reorder level.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel panel--full panel--cyan">
+      <div class="panel-header">
+        <h2 class="panel-title">Order Fulfillment</h2>
+        <span class="panel-tag">ORDERED VS. RECEIVED</span>
+      </div>
+      {% if po_fulfillment %}
+      <table class="panel-table">
+        <thead><tr><th>PO No.</th><th>Supplier</th><th>Ordered</th><th>Received</th><th>Variance</th></tr></thead>
+        <tbody>
+          {% for po in po_fulfillment %}
+          <tr>
+            <td><a href="{{ url_for('po_detail', po_id=po.id) }}">{{ po.po_number }}</a></td>
+            <td>{{ po.supplier.name }}</td>
+            <td>{{ po.total_ordered_quantity|int }}</td>
+            <td>{{ po.total_received_quantity|int }}</td>
+            <td class="{{ 'variance-neg' if po.total_received_quantity < po.total_ordered_quantity else 'variance-pos' }}">
+              {{ (po.total_received_quantity - po.total_ordered_quantity)|int }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">No received purchase orders yet.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   {% if role == 'pharmacist' %}
   <div class="dash-section">
     <h2 class="dash-section-title">Pharmacy Operations</h2>
 
-    <div class="kpi-row kpi-row--four">
+    <div class="kpi-row {{ pharmacy_kpi_row_class }}">
+      {% for label, value in pharmacy_location_cards %}
       <div class="kpi-card kpi-card--green kpi-card--compact">
-        <div class="kpi-top"><span class="kpi-label">Holding Balance</span><span class="kpi-dot"></span></div>
-        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(holding_value) }}</div>
+        <div class="kpi-top"><span class="kpi-label">{{ label }}</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(value) }}</div>
       </div>
-      <div class="kpi-card kpi-card--cyan kpi-card--compact">
-        <div class="kpi-top"><span class="kpi-label">Outpatient Pharmacy</span><span class="kpi-dot"></span></div>
-        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(outpatient_value) }}</div>
-      </div>
-      <div class="kpi-card kpi-card--purple kpi-card--compact">
-        <div class="kpi-top"><span class="kpi-label">Inpatient Pharmacy</span><span class="kpi-dot"></span></div>
-        <div class="kpi-value kpi-value--currency">{{ currency }} {{ "{:,.0f}".format(inpatient_value) }}</div>
-      </div>
-      <div class="kpi-card kpi-card--yellow kpi-card--compact">
-        <div class="kpi-top"><span class="kpi-label">Prescription Fill Rate</span><span class="kpi-dot"></span></div>
-        <div class="kpi-value">{{ fill_rate }}%</div>
-        <div class="kpi-sub">{{ dispensed_prescriptions }} / {{ total_prescriptions }} fully dispensed</div>
-      </div>
+      {% endfor %}
     </div>
 
     <div class="panel-row">
@@ -333,12 +573,14 @@
         </div>
         {% if my_requisitions %}
         <table class="panel-table">
-          <thead><tr><th>S11 No.</th><th>Issue Point</th><th>Status</th><th>Raised</th></tr></thead>
+          <thead><tr><th>S11 No.</th><th>Issue Point</th><th>Required</th><th>Issued</th><th>Status</th><th>Raised</th></tr></thead>
           <tbody>
             {% for r in my_requisitions %}
             <tr>
               <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
-              <td>{{ r.issue_point }}</td>
+             <td>{{ r.issue_point }}</td>
+              <td>{{ r.total_required_quantity|int }}</td>
+              <td>{{ r.total_issued_quantity|int }}</td>
               <td><span class="status-tag status-tag--{{ r.status|lower }}">{{ r.status }}</span></td>
               <td>{{ r.created_at.strftime('%d %b') }}</td>
             </tr>
@@ -371,6 +613,131 @@
         </table>
         {% else %}
         <p class="panel-empty">No discharge refunds recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if role == 'hod_pharmacy' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">HOD Pharmacy — Approvals &amp; Drug Flow</h2>
+
+    <div class="kpi-row kpi-row--two">
+      <a href="#requisitions-to-approve" class="kpi-card kpi-card--magenta kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Awaiting My Approval</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">{{ requisitions_to_approve|length }}</div>
+        <div class="kpi-sub">Holding requisitions — OP &amp; IP</div>
+      </a>
+      <a href="#approved-awaiting-issue" class="kpi-card kpi-card--orange kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Approved, Awaiting Issue</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">{{ approved_awaiting_issue|length }}</div>
+        <div class="kpi-sub">ready to be issued from Holding</div>
+      </a>
+    </div>
+
+    <div class="panel panel--full panel--magenta" id="requisitions-to-approve">
+      <div class="panel-header">
+        <h2 class="panel-title">Requisitions Awaiting Approval</h2>
+        <span class="panel-tag">FROM OUTPATIENT &amp; INPATIENT PHARMACY</span>
+      </div>
+      {% if requisitions_to_approve %}
+      <table class="panel-table">
+        <thead><tr><th>S11 No.</th><th>Department</th><th>Required Qty</th><th>Raised By</th><th>Raised</th><th></th></tr></thead>
+        <tbody>
+          {% for r in requisitions_to_approve %}
+          <tr>
+            <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+            <td>{{ r.department.name }}</td>
+            <td>{{ r.total_required_quantity|int }}</td>
+            <td>{{ r.requested_by.name if r.requested_by else '—' }}</td>
+            <td>{{ r.created_at.strftime('%d %b') }}</td>
+            <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}" class="btn-sm btn-secondary">Review</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">Nothing pending your approval.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel panel--full panel--orange" id="approved-awaiting-issue">
+      <div class="panel-header">
+        <h2 class="panel-title">Approved — Awaiting Issue</h2>
+        <span class="panel-tag">HOLDING</span>
+      </div>
+      {% if approved_awaiting_issue %}
+      <table class="panel-table">
+        <thead><tr><th>S11 No.</th><th>Department</th><th>Required Qty</th><th>Approved</th><th></th></tr></thead>
+        <tbody>
+          {% for r in approved_awaiting_issue %}
+          <tr>
+            <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+            <td>{{ r.department.name }}</td>
+            <td>{{ r.total_required_quantity|int }}</td>
+            <td>{{ r.created_at.strftime('%d %b') }}</td>
+            <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}" class="btn-sm btn-secondary">Issue</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">No approved requisitions waiting to be issued.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--green">
+        <div class="panel-header">
+          <h2 class="panel-title">Requisition Fulfillment</h2>
+          <span class="panel-tag">REQUIRED VS. ISSUED · HOLDING</span>
+        </div>
+        {% if requisition_fulfillment %}
+        <table class="panel-table">
+          <thead><tr><th>S11 No.</th><th>Department</th><th>Required</th><th>Issued</th><th>Variance</th></tr></thead>
+          <tbody>
+            {% for r in requisition_fulfillment %}
+            <tr>
+              <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+              <td>{{ r.department.name }}</td>
+              <td>{{ r.total_required_quantity|int }}</td>
+              <td>{{ r.total_issued_quantity|int }}</td>
+              <td class="{{ 'variance-neg' if r.total_issued_quantity < r.total_required_quantity else 'variance-pos' }}">
+                {{ (r.total_issued_quantity - r.total_required_quantity)|int }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No issued requisitions from Holding yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--cyan">
+        <div class="panel-header">
+          <h2 class="panel-title">Drug Flow — Holding / OP / IP</h2>
+          <span class="panel-tag">LAST 15 MOVEMENTS</span>
+        </div>
+        {% if pharmacy_flow_movements %}
+        <table class="panel-table">
+          <thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>From</th><th>To</th></tr></thead>
+          <tbody>
+            {% for m in pharmacy_flow_movements %}
+            <tr>
+              <td>{{ m.created_at.strftime('%d %b, %H:%M') }}</td>
+              <td>{{ m.item.name }}</td>
+              <td><span class="movement-tag movement-tag--{{ m.movement_type }}">{{ m.movement_type }}</span></td>
+              <td>{{ m.quantity|int }}</td>
+              <td>{{ m.from_location or '—' }}</td>
+              <td>{{ m.to_location or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No movements recorded across Holding, Outpatient, or Inpatient Pharmacy yet.</p>
         {% endif %}
       </div>
     </div>
@@ -447,11 +814,82 @@
   </div>
   {% endif %}
 
+  {% if role == 'registry' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">Registry Overview</h2>
+
+    <div class="kpi-row kpi-row--two">
+      <a href="{{ url_for('patient_new') }}" class="kpi-card kpi-card--green kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Register Patient</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">+</div>
+        <div class="kpi-sub">add a new patient</div>
+      </a>
+      <a href="{{ url_for('patient_list') }}" class="kpi-card kpi-card--cyan kpi-card--compact">
+        <div class="kpi-top"><span class="kpi-label">Total Patients</span><span class="kpi-dot"></span></div>
+        <div class="kpi-value">{{ total_patients }}</div>
+        <div class="kpi-sub">registered in the system</div>
+      </a>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel panel--purple">
+        <div class="panel-header">
+          <h2 class="panel-title">Recently Registered Patients</h2>
+          <span class="panel-tag">LATEST 10</span>
+        </div>
+        {% if recent_patients %}
+        <table class="panel-table">
+          <thead><tr><th>Name</th><th>IP/OP No.</th><th>Type</th><th>Clinic/Ward</th></tr></thead>
+          <tbody>
+            {% for p in recent_patients %}
+            <tr>
+              <td><a href="{{ url_for('patient_detail', patient_id=p.id) }}">{{ p.name }}</a></td>
+              <td>{{ p.ip_op_number }}</td>
+              <td>{{ p.patient_type }}</td>
+              <td>{{ p.clinic_ward_unit or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No patients registered yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel panel--orange">
+        <div class="panel-header">
+          <h2 class="panel-title">Upcoming Appointments</h2>
+          <span class="panel-tag">NEXT 10</span>
+        </div>
+        {% if upcoming_appointments %}
+        <table class="panel-table">
+          <thead><tr><th>Date</th><th>Patient</th><th>Clinic/Ward</th></tr></thead>
+          <tbody>
+            {% for a in upcoming_appointments %}
+            <tr>
+              <td>{{ a.scheduled_date.strftime('%d %b') }}</td>
+              <td><a href="{{ url_for('patient_detail', patient_id=a.patient_id) }}">{{ a.patient.name }}</a></td>
+              <td>{{ a.clinic_ward_unit or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="panel-empty">No upcoming appointments.</p>
+        {% endif %}
+        <div class="panel-footer">
+          <a href="{{ url_for('appointment_list') }}" class="panel-footer-link">View all appointments →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% if role != 'doctor' %}
+{% if role not in ['doctor', 'registry'] %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="{{ url_for('static', filename='js/dashboard_charts.js') }}"></script>
 {% endif %}

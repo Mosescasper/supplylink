@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ pr.pr_number }}{% endblock %}
+{% block page_title %}{{ pr.pr_number }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('purchase_requisition_list') }}" class="btn">Back to List</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <table class="table">
+    <tbody>
+      <tr><th>Status</th><td><span class="badge badge-{{ 'success' if pr.status == 'Converted' else 'danger' if pr.status == 'Rejected' else 'warning' if pr.status == 'Pending' else 'info' }}">{{ pr.status }}</span></td></tr>
+      <tr><th>Department</th><td>{{ pr.department.name if pr.department else '—' }}</td></tr>
+      <tr><th>Requested By</th><td>{{ pr.requested_by.name if pr.requested_by else '—' }}</td></tr>
+      <tr><th>Date</th><td>{{ pr.created_at.strftime('%d %b %Y, %H:%M') }}</td></tr>
+      {% if pr.notes %}<tr><th>Notes</th><td>{{ pr.notes }}</td></tr>{% endif %}
+      {% if pr.reviewed_by %}
+      <tr><th>Reviewed By</th><td>{{ pr.reviewed_by.name }} on {{ pr.reviewed_at.strftime('%d %b %Y') }}</td></tr>
+      {% endif %}
+      {% if pr.review_notes %}<tr><th>Review Notes</th><td>{{ pr.review_notes }}</td></tr>{% endif %}
+      {% if pr.purchase_order %}
+      <tr><th>Purchase Order</th><td><a href="{{ url_for('po_detail', po_id=pr.purchase_order.id) }}">{{ pr.purchase_order.po_number }}</a></td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3 class="section-heading">Items Requested</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>In Catalog?</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in pr.lines %}
+      <tr>
+        <td>{{ line.item_name }}</td>
+        <td>{{ 'Yes' if line.item_id else 'No — new item' }}</td>
+        <td>{{ line.quantity_requested }}</td>
+        <td>{{ line.unit_of_issue or '—' }}</td>
+        <td>{{ line.justification or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if current_user.role in ['admin', 'supply_chain'] %}
+  {% if pr.status == 'Pending' %}
+  <div class="card">
+    <h3 class="section-heading">Review</h3>
+    <form method="POST" action="{{ url_for('purchase_requisition_approve', pr_id=pr.id) }}">
+      <div class="form-group">
+        <label>Review Notes (optional)</label>
+        <input type="text" name="review_notes" class="form-control">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Approve</button>
+        <button type="submit" formaction="{{ url_for('purchase_requisition_reject', pr_id=pr.id) }}" class="btn btn-danger">Reject</button>
+      </div>
+    </form>
+  </div>
+  {% elif pr.status == 'Approved' %}
+  <div class="card">
+    <h3 class="section-heading">Convert to Purchase Order</h3>
+    <form method="POST" action="{{ url_for('purchase_requisition_convert', pr_id=pr.id) }}">
+      <div class="form-group">
+        <label for="supplier_id">Supplier</label>
+        <select id="supplier_id" name="supplier_id" class="form-control" required>
+          <option value="">Select supplier</option>
+          {% for s in suppliers %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Convert to Draft PO</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

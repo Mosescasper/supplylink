@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}New Purchase Requisition{% endblock %}
+{% block page_title %}New Purchase Requisition{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="POST">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="department_id">Department</label>
+        <select id="department_id" name="department_id" class="form-control" required>
+          <option value="">Select department</option>
+          {% for dept in departments %}
+          <option value="{{ dept.id }}" {{ 'selected' if current_user.department_id == dept.id else '' }}>{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Any context Supply Chain should know"></textarea>
+    </div>
+
+    <h3 class="section-heading">Items Requested</h3>
+    <div id="lines-wrap">
+      <div class="pr-line form-row" style="align-items:flex-end;">
+        <div class="form-group">
+          <label>Existing Item (optional)</label>
+          <select name="item_id[]" class="form-control pr-item-select">
+            <option value="">— Not in catalog yet —</option>
+            {% for item in items %}
+            <option value="{{ item.id }}">{{ item.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Item Name (if not listed above)</label>
+          <input type="text" name="item_name[]" class="form-control" placeholder="e.g. Digital thermometer">
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" step="0.01" name="quantity_requested[]" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input type="text" name="unit_of_issue[]" class="form-control" placeholder="e.g. Units, Boxes">
+        </div>
+        <div class="form-group">
+          <label>Reason</label>
+          <input type="text" name="justification[]" class="form-control" placeholder="Why is this needed">
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="btn" id="add-line-btn">+ Add Another Item</button>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Submit Purchase Request</button>
+      <a href="{{ url_for('purchase_requisition_list') }}" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById('add-line-btn').addEventListener('click', function () {
+  const wrap = document.getElementById('lines-wrap');
+  const clone = wrap.firstElementChild.cloneNode(true);
+  clone.querySelectorAll('input').forEach(i => i.value = '');
+  clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  wrap.appendChild(clone);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,2126 @@
+[
+  {
+    "sku": "SA001",
+    "name": "Atracurium - Injection, 10mg/ml (as besilate",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Ampoule",
+    "unit_cost": 300.0,
+    "qty": 460.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SA002",
+    "name": "Bupivacaine + Glucose - Injection for spinal anaesthesia, bupivacaine 0.5% (5mg/ml) as hydrochloride to be mixed with 7.5% (75mg/ml) glucose solution",
+    "category": "Pharmaceuticals",
+    "unit": "4ml Ampoule",
+    "unit_cost": 39.0,
+    "qty": 615.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SA004",
+    "name": "Diazepam - Injection, 5mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 48.0,
+    "qty": 790.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "GEN-0001",
+    "name": "Diazepam - Tablet 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "tablets",
+    "unit_cost": 0.58,
+    "qty": 400.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SA007",
+    "name": "Halothane - Solution for inhalation",
+    "category": "Pharmaceuticals",
+    "unit": "250ml Amber Bottle",
+    "unit_cost": 6000.0,
+    "qty": 9.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SA008",
+    "name": "Ketamine - Injection, 50 mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "10ml Vial",
+    "unit_cost": 112.0,
+    "qty": 110.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SA013",
+    "name": "Lignocaine - Injection, 20mg/ml (2%) (as hydrochloride )",
+    "category": "Pharmaceuticals",
+    "unit": "20-50ml Amber vial",
+    "unit_cost": 385.0,
+    "qty": 625.0,
+    "expiry": "2029-10-31"
+  },
+  {
+    "sku": "SA011",
+    "name": "Lignocaine Hci 2% + Adrenaline (Dental Catridges) - Injection, dental cartridge, lidocaine 2% (as hydrochloride) + epinephrine 1:80 000",
+    "category": "Pharmaceuticals",
+    "unit": "Cartridge",
+    "unit_cost": 54.0,
+    "qty": 700.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SA016",
+    "name": "Midazolam - Injection, 5mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "3ml amps",
+    "unit_cost": 99.0,
+    "qty": 1000.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SA017",
+    "name": "Neostigmine - Injection, 2.5mg/ml (as metilsulfate)",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 66.0,
+    "qty": 600.0,
+    "expiry": "2027-01-31"
+  },
+  {
+    "sku": "SA021",
+    "name": "Propofol - Injection, emulsion for intravenous Injection, 200mg (10mg/ml)",
+    "category": "Pharmaceuticals",
+    "unit": "20ml Ampoule",
+    "unit_cost": 143.0,
+    "qty": 420.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "SA028",
+    "name": "Isoflurane - Solution for Inhalation",
+    "category": "Pharmaceuticals",
+    "unit": "250ml Bottle",
+    "unit_cost": 4450.0,
+    "qty": 82.0,
+    "expiry": "2029-08-31"
+  },
+  {
+    "sku": "SA032",
+    "name": "Ephedrine - Injection, 30mg/ml (as hydrochloride )",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 90.0,
+    "qty": 510.0,
+    "expiry": "2028-05-31"
+  },
+  {
+    "sku": "SA037A",
+    "name": "Sevoflurane - Solution for Inhalation",
+    "category": "Pharmaceuticals",
+    "unit": "250ml Bottle",
+    "unit_cost": 13000.0,
+    "qty": 40.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SA038",
+    "name": "Dexmedetomidine - Solution for IV Infusion, 100micrograms/mL (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "2ml vial",
+    "unit_cost": 1750.0,
+    "qty": 250.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SB002",
+    "name": "Allopurinol - Tablet, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister",
+    "unit_cost": 3.35,
+    "qty": 450.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SB008",
+    "name": "Diclofenac - Topical gel, 1% ( as sodium)",
+    "category": "Pharmaceuticals",
+    "unit": "20g tube",
+    "unit_cost": 21.0,
+    "qty": 552.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SB013",
+    "name": "Ibuprofen - Tablet, 200mg, sugar coated",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister",
+    "unit_cost": 0.85,
+    "qty": 15000.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SB014",
+    "name": "Ibuprofen - Syrup, 100mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 42.0,
+    "qty": 150.0,
+    "expiry": "2029-02-28"
+  },
+  {
+    "sku": "SB028",
+    "name": "Paracetamol - tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Caplet, Blister pack",
+    "unit_cost": 1.88,
+    "qty": 79500.0,
+    "expiry": "2028-04-30"
+  },
+  {
+    "sku": "SB031",
+    "name": "Paracetamol - Syrup, 120mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "60ml Bottle",
+    "unit_cost": 28.0,
+    "qty": 970.0,
+    "expiry": "2026-11-30"
+  },
+  {
+    "sku": "SB037",
+    "name": "Tramadol - Capsule, 50mg ( as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule, Blister",
+    "unit_cost": 4.0,
+    "qty": 4500.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SB038",
+    "name": "Tramadol - Injection, solution for injection, 50mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 12.0,
+    "qty": 4290.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SB039A",
+    "name": "Meloxicam - Tablet, 7.5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister",
+    "unit_cost": 1.33,
+    "qty": 400.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SB041",
+    "name": "Paracetamol - Suppository, 125mg",
+    "category": "Pharmaceuticals",
+    "unit": "Supposit ory",
+    "unit_cost": 5.7,
+    "qty": 200.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SB042",
+    "name": "Diclofenac - Suppository, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Supposit ory",
+    "unit_cost": 56.94,
+    "qty": 700.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SB044",
+    "name": "Paracetamol - Injection, solution for intravenous infusion,",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Vial",
+    "unit_cost": 68.0,
+    "qty": 9260.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SB45",
+    "name": "Chlorzoxazone +Paracetamol - Capsule, chlorzoxazone 250mg + paracetamol 300mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule blister pack",
+    "unit_cost": 11.33,
+    "qty": 8550.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SB047",
+    "name": "Hydroxychloroquin - Tablet, 200mg ( as sulfate)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 33.0,
+    "qty": 2400.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SB055",
+    "name": "Celecoxib - Capsule, 200mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule, Blister pack",
+    "unit_cost": 10.0,
+    "qty": 9800.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SB085",
+    "name": "Dexketoprofen - Solution for Injection, 50mg/2ml",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule",
+    "unit_cost": 35.0,
+    "qty": 9650.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SB085A",
+    "name": "Dexketoprofen - Tablet,25mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 25.0,
+    "qty": 9300.0,
+    "expiry": "2027-02-28"
+  },
+  {
+    "sku": "SB119",
+    "name": "Mefenamic acid 250mg - Capsules 250mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsules",
+    "unit_cost": 0.9,
+    "qty": 500.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SB212",
+    "name": "Tramadol - Capsules, modified Release 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Caplet, Blister pack",
+    "unit_cost": 6.75,
+    "qty": 210.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SC003",
+    "name": "Amitryptyline - Tablet, 25mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 0.65,
+    "qty": 2000.0,
+    "expiry": "2029-02-28"
+  },
+  {
+    "sku": "SC016",
+    "name": "Fluoxetine - Capsule, 20 mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule, Blister pack",
+    "unit_cost": 10.0,
+    "qty": 700.0,
+    "expiry": "2029-09-30"
+  },
+  {
+    "sku": "SC018",
+    "name": "Haloperidol - Tablet 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 1.98,
+    "qty": 2000.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SC024",
+    "name": "Olanzepine - Tablet, 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 5.56,
+    "qty": 4000.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SC040",
+    "name": "Phenobarbital - Tablet, 30mg, , scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.75,
+    "qty": 3500.0,
+    "expiry": "2029-04-30"
+  },
+  {
+    "sku": "SC042",
+    "name": "Phenytoin - Injection, 50mg/ml (as sodium)",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Ampoule",
+    "unit_cost": 85.0,
+    "qty": 1160.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SC045",
+    "name": "Phenobarbital - Injection, 200mg/ml (as sodium)",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule",
+    "unit_cost": 90.0,
+    "qty": 130.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SC046",
+    "name": "Sodium valproate (valproic acid) - Tablet, 200mg (as sodium), enteric coated",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 8.0,
+    "qty": 1700.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SC046C",
+    "name": "Sodium valproate (valproic acid) - Tablet, 500mg, slow release",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 14.0,
+    "qty": 2400.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SC052",
+    "name": "Ondansetron - Injection,solution for injection, 2mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 27.0,
+    "qty": 6100.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SC052A",
+    "name": "Ondansetron - Oral solution, 2mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "30 ml Bottle",
+    "unit_cost": 280.0,
+    "qty": 364.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SC054",
+    "name": "Benzhexol (Trihexyphenidyl) - Tablet, 5mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 1.45,
+    "qty": 2400.0,
+    "expiry": "2028-12-31"
+  },
+  {
+    "sku": "SC060",
+    "name": "Flupentixol - Injection, oily solution for injection (as Decanoate), 20mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 1190.0,
+    "qty": 10.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SC103",
+    "name": "Metoclopropamide - Tablet, 10mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 0.62,
+    "qty": 4000.0,
+    "expiry": "2029-02-28"
+  },
+  {
+    "sku": "SC216",
+    "name": "Fluphenazine injection - Oily injection, 25mg/mL,1mL",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 100.0,
+    "qty": 40.0,
+    "expiry": "2027-05-31"
+  },
+  {
+    "sku": "SH420",
+    "name": "Mirabegron 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "tablets",
+    "unit_cost": 45.0,
+    "qty": 600.0,
+    "expiry": "2027-03-31"
+  },
+  {
+    "sku": "SC008",
+    "name": "Chlorpromazine - Injection, solution for injection, 25mg/ml (as hydrochloride )",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 10.0,
+    "qty": 150.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SC033",
+    "name": "Carbamazepine - Tablet, 200mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 3.3,
+    "qty": 2600.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SC033B",
+    "name": "Carbamazepine - Suspension, 100mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 645.0,
+    "qty": 10.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SC085",
+    "name": "Ondansetron - Tablet, 4mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 2.5,
+    "qty": 5400.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SC093",
+    "name": "Levetiracetam - Tablet, 750mg(levipil)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 53.0,
+    "qty": 4500.0,
+    "expiry": "2028-05-31"
+  },
+  {
+    "sku": "SC094A",
+    "name": "Chlorpromazine - Tablet, 100mg, Scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 2.4,
+    "qty": 500.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SD003",
+    "name": "Antacid - Oral suspension, Magnesium hydroxide / trisilicate + Aluminium hydroxide with Simethicone",
+    "category": "Pharmaceuticals",
+    "unit": "150ml-300ml Bottle",
+    "unit_cost": 85.0,
+    "qty": 200.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SD006",
+    "name": "Bisacodyl - Tablet, 5mg, enteric coated",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.55,
+    "qty": 4100.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SD016",
+    "name": "Hyoscine - Injection, solution for injection, 20mg/ml (as butylbromide )",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 25.0,
+    "qty": 1200.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SD018",
+    "name": "Hypertonic sodium phosphate enema (or equivalent) - Rectal solution",
+    "category": "Pharmaceuticals",
+    "unit": "Bottle",
+    "unit_cost": 178.0,
+    "qty": 5.0,
+    "expiry": "2028-04-30"
+  },
+  {
+    "sku": "SD019",
+    "name": "Lactulose - Oral liquid, 62-74g/100ml (Approx.3.335g/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "200ml Bottle",
+    "unit_cost": 258.0,
+    "qty": 340.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SD020",
+    "name": "Loperamide - Capsule, 2mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule",
+    "unit_cost": 2.0,
+    "qty": 138.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SD022A",
+    "name": "Omeprazole - Capsule / Tablet, 20mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule",
+    "unit_cost": 0.95,
+    "qty": 1000.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SD029",
+    "name": "Fosaprepitant - Injection, 150mg",
+    "category": "Pharmaceuticals",
+    "unit": "Injection",
+    "unit_cost": 2100.0,
+    "qty": 15.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SD032",
+    "name": "Esomeprazole - Granules for oral suspension, 10mg",
+    "category": "Pharmaceuticals",
+    "unit": "Sachet",
+    "unit_cost": 120.77,
+    "qty": 300.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SD032A",
+    "name": "Esomeprazole - Tablet, 20mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 3.5,
+    "qty": 5100.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SE 001",
+    "name": "Epinephrine (Adrenaline ) - Injection, solution for injection, 1mg/ml (as hydrochloride or hydrotartrate)",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 6.0,
+    "qty": 900.0,
+    "expiry": "2027-01-31"
+  },
+  {
+    "sku": "SE016",
+    "name": "Dopamine - Injection, solution for injection, 40mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Vial/Ampoule",
+    "unit_cost": 150.0,
+    "qty": 25.0,
+    "expiry": "2026-10-31"
+  },
+  {
+    "sku": "SE018A",
+    "name": "Enalapril - Tablet, 5mg (as hydromaleate), scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.75,
+    "qty": 4424.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SE2113",
+    "name": "Rosuvastatin - Tablets, 10mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablets",
+    "unit_cost": 10.0,
+    "qty": 840.0,
+    "expiry": "2028-05-31"
+  },
+  {
+    "sku": "SE020",
+    "name": "Hydrallazine - Tablet, 25mg ( as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablets",
+    "unit_cost": 1.77,
+    "qty": 2000.0,
+    "expiry": "2029-02-28"
+  },
+  {
+    "sku": "SE027",
+    "name": "Losartan - Tablet, 50mg (as Potassium)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 1.3,
+    "qty": 4480.0,
+    "expiry": "2029-03-31"
+  },
+  {
+    "sku": "SE029",
+    "name": "Methyldopa - Tablet, 250mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 5.5,
+    "qty": 7700.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SE032",
+    "name": "Nifedipine - Tablet, 20mg, sustained release",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 0.8,
+    "qty": 5700.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SE033",
+    "name": "Noradrenaline - Injection, solution for injection, 2mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule",
+    "unit_cost": 445.0,
+    "qty": 900.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SE043",
+    "name": "Furosemide - Tablet, 40mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 1.24,
+    "qty": 10000.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SE044",
+    "name": "Furosemide - Injection, solution for injection, 10mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule",
+    "unit_cost": 9.0,
+    "qty": 5500.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SE047",
+    "name": "Spironolacto ne - Tablet, 25mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 3.5,
+    "qty": 5000.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SE051",
+    "name": "Low molecular weight heparin (Enoxaparin) - Injection, solution for injection, 100mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "0.4ml prefilled syringe",
+    "unit_cost": 300.0,
+    "qty": 2076.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SE051B",
+    "name": "Low molecular weight heparin (Enoxaparin) - Injection, solution for injection, 100mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "0.6ml prefilled syringe",
+    "unit_cost": 420.0,
+    "qty": 890.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SE053",
+    "name": "Heparin - Injection, solution for injection, 5000IU/ml (as sodium)",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Vial",
+    "unit_cost": 395.0,
+    "qty": 970.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SE055",
+    "name": "Tranexamic acid - Injection, solution for injection, 100mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Ampoule",
+    "unit_cost": 59.0,
+    "qty": 1600.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SE060A",
+    "name": "Carvedilol - Tablet, 12.5mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 3.1,
+    "qty": 6440.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SE060B",
+    "name": "Carvedilol - Tablet, 6.25mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 1.8,
+    "qty": 6440.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SE068",
+    "name": "Magnesium - Injection, solution for injection, 4% (as sulfate )",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 320.0,
+    "qty": 150.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SE070",
+    "name": "Mannitol - Injection, solution for infusion, 20%",
+    "category": "Pharmaceuticals",
+    "unit": "500ml Bottle",
+    "unit_cost": 446.0,
+    "qty": 329.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SE072",
+    "name": "Phytomenadione - Injection, solution for injection, 10mg/ ml",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 49.0,
+    "qty": 480.0,
+    "expiry": "2027-01-31"
+  },
+  {
+    "sku": "SE072A",
+    "name": "Phytomenadione - Injection, solution for injection, 10mg/ ml",
+    "category": "Pharmaceuticals",
+    "unit": "0.2Amps",
+    "unit_cost": 60.0,
+    "qty": 295.0,
+    "expiry": "2027-04-30"
+  },
+  {
+    "sku": "SE074A",
+    "name": "Hydrochlorthiazide - Tablet, 25mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.48,
+    "qty": 13000.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SE075",
+    "name": "Amlodipine + Losartan - Tablet, amlodipine 5mg + losartan 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 5.2,
+    "qty": 5600.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SE075A",
+    "name": "Amlodipine+ Losartan +Hydrochlorothiazide - Tablet, amlodipine 5mg +Losartan 50mg + Hydrochlorothiazide 12.5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 36.67,
+    "qty": 7200.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SE091",
+    "name": "Clopidogrel - Tablet, 75 mg (as hydrogen sulfate)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 4.2,
+    "qty": 8176.0,
+    "expiry": "2029-04-30"
+  },
+  {
+    "sku": "SE094",
+    "name": "Labetalol - Injection, solution for injection, 5mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "20ml Ampoule",
+    "unit_cost": 1850.0,
+    "qty": 90.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SE095",
+    "name": "Losartan +hydrochlorthiazide - Tablet, losartan 50mg + hydrochlorothiazide 12.5m",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 1.38,
+    "qty": 6160.0,
+    "expiry": "2029-04-30"
+  },
+  {
+    "sku": "SE002",
+    "name": "Amlodipine - Capsule, 2mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 1.24,
+    "qty": 4760.0,
+    "expiry": "2028-12-31"
+  },
+  {
+    "sku": "SE112A",
+    "name": "Bisoprolol - Tablet, 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 5.7,
+    "qty": 5250.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SE129",
+    "name": "Acetylsalicylic acid - Tablet, 75mg, enteric coated",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 1.61,
+    "qty": 6900.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SE132",
+    "name": "Tadalafil - Tablet 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 29.3,
+    "qty": 5100.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SE134B",
+    "name": "Telmisartan + Hydrochlorthiazide - Tablet, Telmisartan 40mg +Hydrochlorthiazide 12.5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 5.5,
+    "qty": 1500.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SE134",
+    "name": "Torasemide - Tablet, 10mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 6.99,
+    "qty": 300.0,
+    "expiry": "2027-05-31"
+  },
+  {
+    "sku": "SE136B",
+    "name": "Rivaroxaban - Tablet, 15mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 33.0,
+    "qty": 390.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SE2113-2",
+    "name": "Ranolazine - Modified release tablets 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 99.0,
+    "qty": 60.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SF002",
+    "name": "Amikacin - Injection, solution for injection, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule s/vials",
+    "unit_cost": 50.0,
+    "qty": 20.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SF003",
+    "name": "Amoxicillin + Clavulanic Acid - Injection, powder for reconstitution 1.2gm, (Amoxicillin (sodium) 1gm + Clavulanic Acid (potassium clavulanate) 200mg)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 95.0,
+    "qty": 3360.0,
+    "expiry": "2027-04-30"
+  },
+  {
+    "sku": "SF005A",
+    "name": "Amoxicillin + Clavulanic Acid - Powder for oral suspension, Amoxicillin (trihydrate) 200mg + Clavulanic Acid (Potassium clavulanate), 28mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "70ml btls",
+    "unit_cost": 90.0,
+    "qty": 405.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SF005A-2",
+    "name": "Amoxicillin + Clavulanic Acid - Dispersible Tablet, Amoxicillin (trihydrate) 200mg + Clavulanic Acid (Potassium clavulanate) 28mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 12.0,
+    "qty": 3700.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SF008",
+    "name": "Amoxicillin + Clavulanic Acid - Tablet, Amoxicillin (trihydrate) 500mg + Clavulanic Acid (Potassium clavulanate) 125mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 11.0,
+    "qty": 6800.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SF011A",
+    "name": "Amoxicillin - Powder for oral suspension, 250mg/5ml, (trihydrate) anhydrous.",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 140.0,
+    "qty": 80.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SF019",
+    "name": "Azithromycin - Tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, 3's, Blister pack",
+    "unit_cost": 23.0,
+    "qty": 30.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SF019A",
+    "name": "Azithromycin - Suspension, Powder for reconstitution, 200mg/5ml",
+    "category": "Pharmaceuticals",
+    "unit": "30ml Bottle",
+    "unit_cost": 89.0,
+    "qty": 165.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SF021",
+    "name": "Benzylpenicill in - Injection, powder for reconstitution,600mg (1 million IU)(sodium or potassium)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 32.0,
+    "qty": 300.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SF024",
+    "name": "Cefuroxime - Injection, powder for reconstitution, 750mg (as sodium )",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 95.86,
+    "qty": 40.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "SF026",
+    "name": "Ceftriaxone - Injection, powder for reconstitution, 1gm ( as sodium salt)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 34.0,
+    "qty": 12520.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SF039",
+    "name": "Clindamycin - Capsules 150mg",
+    "category": "Pharmaceuticals",
+    "unit": "capsules",
+    "unit_cost": 6.3,
+    "qty": 1200.0,
+    "expiry": "2028-04-30"
+  },
+  {
+    "sku": "SF042A",
+    "name": "Amoxicillin - Capsule or Tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "capsules",
+    "unit_cost": 3.68,
+    "qty": 5500.0,
+    "expiry": "2029-03-31"
+  },
+  {
+    "sku": "SF049",
+    "name": "Erythromycin - Powder for oral suspension, 125mg/5ml (as stearate or ethyl succinate)",
+    "category": "Pharmaceuticals",
+    "unit": "Prefilled Syringe.",
+    "unit_cost": 1708.0,
+    "qty": 612.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SF 052",
+    "name": "Flucloxacillin - Capsule, 250mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule,Blister pack",
+    "unit_cost": 3.92,
+    "qty": 8000.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SF053",
+    "name": "Flucloxacillin - Powder for oral suspension",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 72.0,
+    "qty": 450.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SF054B",
+    "name": "Flucloxacillin - Injection, Powder for reconstitution,500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 60.0,
+    "qty": 725.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SF056",
+    "name": "Gentamicin - Injection, solution for injection, 40mg/ml, (as sulfate)",
+    "category": "Pharmaceuticals",
+    "unit": "2ml Ampoule /Vial",
+    "unit_cost": 8.5,
+    "qty": 1600.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SF059",
+    "name": "Meropenem - Injection, powder for reconstitution, 1gm",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 370.5,
+    "qty": 410.0,
+    "expiry": "2027-02-28"
+  },
+  {
+    "sku": "SF061",
+    "name": "Metronidazole - Injection, solution for infusion, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle / Collapsible Bags",
+    "unit_cost": 40.0,
+    "qty": 5300.0,
+    "expiry": "2028-04-30"
+  },
+  {
+    "sku": "SF060",
+    "name": "Metronidazole - Tablet 200mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 1.0,
+    "qty": 7000.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SF062",
+    "name": "Metronidazole - Oral suspension, 200mg/5ml (as benzoate)",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 60.0,
+    "qty": 70.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SF067",
+    "name": "Nitrofurantoin - Tablet, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 1.26,
+    "qty": 200.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SF091",
+    "name": "Ceftazidime - Injection, powder for reconstitution, 1gm as (pentahydrate)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 97.0,
+    "qty": 1152.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "SF92",
+    "name": "Clarithromycin - Tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablets blister pack",
+    "unit_cost": 2.7,
+    "qty": 1000.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SF095",
+    "name": "Levofloxacin - Tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablets blister pack",
+    "unit_cost": 5.0,
+    "qty": 1330.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SF111",
+    "name": "Cefazolin - Injection, powder for reconstitution, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 135.0,
+    "qty": 200.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SF111A",
+    "name": "Cefazolin - Injection, powder for reconstitution, 1gm",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 125.0,
+    "qty": 800.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SG040",
+    "name": "Fluconazole - Tablet/Capsule, 200mg",
+    "category": "Pharmaceuticals",
+    "unit": "tablets/capsules",
+    "unit_cost": 5.6,
+    "qty": 3700.0,
+    "expiry": "2029-03-31"
+  },
+  {
+    "sku": "SG048",
+    "name": "Nystatin - Oral Liquid, 100,000 I.U/ml",
+    "category": "Pharmaceuticals",
+    "unit": "30ml bttl",
+    "unit_cost": 72.0,
+    "qty": 75.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SG001A",
+    "name": "Aciclovir - Injection, powder for reconstitution, 250mg (as sodium salt)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 800.0,
+    "qty": 450.0,
+    "expiry": "2027-04-30"
+  },
+  {
+    "sku": "GEN-0002",
+    "name": "Clotrimazole - Vaginal Tablet, 500mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 68.0,
+    "qty": 320.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "GEN-0003",
+    "name": "Griseofulvin - Tablet, 500mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 11.0,
+    "qty": 900.0,
+    "expiry": "2026-08-31"
+  },
+  {
+    "sku": "SG070",
+    "name": "Albendazole - Tablet, 400mg, chewable",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 5.4,
+    "qty": 500.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SG072",
+    "name": "Itraconazole - Capsule, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule",
+    "unit_cost": 15.8,
+    "qty": 180.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SG077",
+    "name": "Terbinafine - Tablet, 250mg, scored",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 9.0,
+    "qty": 500.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SH007",
+    "name": "Cisplatin - Injection, solution for injection 1mg/ml, 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "50ml Vial",
+    "unit_cost": 650.0,
+    "qty": 60.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SH010B",
+    "name": "Cyclophosphamide - Injection, powder for reconstitution, 1g",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 250.0,
+    "qty": 114.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SH017",
+    "name": "Fluorouracil - Injection, solution for injection, 500 mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Ampoule/Vial",
+    "unit_cost": 45.0,
+    "qty": 975.0,
+    "expiry": "2026-11-30"
+  },
+  {
+    "sku": "SH021",
+    "name": "Methotrexate - Tablet, 2.5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 10.0,
+    "qty": 2100.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SH032A",
+    "name": "Goserelin - Injection, solution for injection,10.8mg",
+    "category": "Pharmaceuticals",
+    "unit": "Prefilled Syringe.",
+    "unit_cost": 17000.0,
+    "qty": 36.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SH044",
+    "name": "Oxaliplatin - Injection, solution for injection, 50mg/ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 840.0,
+    "qty": 45.0,
+    "expiry": "2027-02-28"
+  },
+  {
+    "sku": "SH044A",
+    "name": "Oxaliplatin - Injection, solution for injection,",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 1800.0,
+    "qty": 10.0,
+    "expiry": "2026-11-30"
+  },
+  {
+    "sku": "SH050",
+    "name": "Irinotecan - Injection, solution for injection, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Vial",
+    "unit_cost": 1500.0,
+    "qty": 390.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SH076A",
+    "name": "Epirubicin - Injection, powder for reconstitution, 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "Vial",
+    "unit_cost": 1800.0,
+    "qty": 18.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SH108",
+    "name": "Tamsulosin+Finasteride - Tablet, Tamsulosin 400 micrograms + Finasteride 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 39.5,
+    "qty": 5850.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SH370",
+    "name": "Tamsulosin+ Dutasteride - Capsule/ tablets,tamsulosin 0.4mgs +dutasteride 0.5mgs",
+    "category": "Pharmaceuticals",
+    "unit": "Capsule",
+    "unit_cost": 23.0,
+    "qty": 300.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SJ001",
+    "name": "Atropine - Injection, 0.6 or 1 mg/ml (As sulfate)",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 9.0,
+    "qty": 3600.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SJ013",
+    "name": "Short acting insulin (soluble/regular) - Injection, short acting human insulin, 100iu/ml",
+    "category": "Pharmaceuticals",
+    "unit": "10ml Vial",
+    "unit_cost": 550.0,
+    "qty": 10.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SJ016",
+    "name": "Carbimazole - Tablet,5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 3.0,
+    "qty": 22700.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "SJ017",
+    "name": "L-Thyroxine - Tablet, 25 micrograms (as sodium)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 5.42,
+    "qty": 2700.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SJ031",
+    "name": "Prednisolone - Tablet, 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.62,
+    "qty": 4000.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SJ032",
+    "name": "Metformin - Tablet, 500 mg (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 0.85,
+    "qty": 1600.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SJ043",
+    "name": "Atorvastatin - Tablet, 20mg (as calcium trihydrate)",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 2.67,
+    "qty": 8716.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SJ063",
+    "name": "Metformin - Tablet, 1gm",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 10.03,
+    "qty": 3600.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SJ085",
+    "name": "Gliclazide MR - Tablet, 60mg, scored, modified release",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 17.83,
+    "qty": 10500.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SJ095A",
+    "name": "Sitagliptin - Tablet, 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 12.57,
+    "qty": 1575.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SJ095A-2",
+    "name": "Sitagliptin - Tablet, 100mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 12.57,
+    "qty": 2275.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SJ098",
+    "name": "Metformin + Sitagliptin - TABLET,Metformin 1000mg +Sitagliptin 50mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 12.57,
+    "qty": 6150.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SK007",
+    "name": "Betamethasone - Ointment, 0.1 % ( as valerate)",
+    "category": "Pharmaceuticals",
+    "unit": "15gm Tube",
+    "unit_cost": 45.1,
+    "qty": 48.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SK020",
+    "name": "Hydrocortisone - Ointment, 1 % (as acetate)",
+    "category": "Pharmaceuticals",
+    "unit": "500gm Tin",
+    "unit_cost": 50.0,
+    "qty": 60.0,
+    "expiry": "2026-07-31"
+  },
+  {
+    "sku": "SK033A",
+    "name": "Mometasone - Ointment, 0.1%",
+    "category": "Pharmaceuticals",
+    "unit": "15-30g",
+    "unit_cost": 518.0,
+    "qty": 192.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SK048",
+    "name": "Clotrimazole with Betamethasone - Cream, Clotrimazole 1% + Betamethasone valerate 0.1% or equivalent",
+    "category": "Pharmaceuticals",
+    "unit": "15g Tube",
+    "unit_cost": 77.0,
+    "qty": 170.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "SL024",
+    "name": "Tetracycline - Eye Ointment, 1%",
+    "category": "Pharmaceuticals",
+    "unit": "3.5gm Tube",
+    "unit_cost": 22.0,
+    "qty": 80.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SL059",
+    "name": "Prednisolone - solution, eye drops, 1%",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Bottle",
+    "unit_cost": 390.0,
+    "qty": 60.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SL060",
+    "name": "Wax Removal Solution - Ear dops, Chlorobutamol 5%,Paradichlorobenzen e 2% ,arachis oil 57.3% (or equivalent)",
+    "category": "Pharmaceuticals",
+    "unit": "10ml bottle",
+    "unit_cost": 160.0,
+    "qty": 60.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SL075",
+    "name": "Azelastine - Solution, Eye drops 0.05%",
+    "category": "Pharmaceuticals",
+    "unit": "5ml- 10ml Bottle",
+    "unit_cost": 263.0,
+    "qty": 245.0,
+    "expiry": "2028-05-31"
+  },
+  {
+    "sku": "SM001A",
+    "name": "Ambroxol - Syrup, 15ml/5ml (as hydrochloride)",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 279.89,
+    "qty": 320.0,
+    "expiry": "2027-04-30"
+  },
+  {
+    "sku": "SM014",
+    "name": "Chlorphenira mine - Injection, solution for injection, 10mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "1 ml Ampoule",
+    "unit_cost": 15.0,
+    "qty": 300.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "SM022A",
+    "name": "Ipratropium + Salbutamol (COMBIVENT) - Solution for nebulization, ipratromium bromide 250 micrograms + salbutamol 1.25mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule",
+    "unit_cost": 67.4,
+    "qty": 1830.0,
+    "expiry": "2027-01-31"
+  },
+  {
+    "sku": "SM031",
+    "name": "Salbutamol - Solution for nebulization, 5mg (as sulfate)/ml",
+    "category": "Pharmaceuticals",
+    "unit": "10ml Bottle",
+    "unit_cost": 85.99,
+    "qty": 1690.0,
+    "expiry": "2027-11-30"
+  },
+  {
+    "sku": "SM044",
+    "name": "Loratidine - Tablet, 10mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 0.99,
+    "qty": 3300.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "SM046",
+    "name": "Cetrizine - Oral Solution, 5mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "60ml Bottle",
+    "unit_cost": 25.27,
+    "qty": 140.0,
+    "expiry": "2026-10-31"
+  },
+  {
+    "sku": "SM047A",
+    "name": "Budesonide+Formoterol- - Pressurized metered dose inhaler, budesonide 400 micrograms + formoterol 6 micrograms /metered dose",
+    "category": "Pharmaceuticals",
+    "unit": "Cans",
+    "unit_cost": 1300.0,
+    "qty": 280.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SM047B",
+    "name": "Budesonide+Formoterol-Pressurized Metered DoseInhaler, Budeso - Pressurized metered dose inhaler, budesonide 100 micrograms + formoterol 6 micrograms /metered dose",
+    "category": "Pharmaceuticals",
+    "unit": "Cans",
+    "unit_cost": 1100.0,
+    "qty": 10.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SM050A",
+    "name": "Inhalation Spacer - (2 years and above)",
+    "category": "Pharmaceuticals",
+    "unit": "Can",
+    "unit_cost": 754.0,
+    "qty": 61.0,
+    "expiry": "2028-07-31"
+  },
+  {
+    "sku": "SM050B",
+    "name": "Inhalation Spacer With baby mask - (6 months - 2 years)",
+    "category": "Pharmaceuticals",
+    "unit": "pieces",
+    "unit_cost": 1685.0,
+    "qty": 23.0,
+    "expiry": "2029-07-31"
+  },
+  {
+    "sku": "SM051",
+    "name": "Caffeine 5mg/ml - Injection, 5mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule",
+    "unit_cost": 1015.3,
+    "qty": 300.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SM060A",
+    "name": "Desloratadine - Tablet, 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 3.2,
+    "qty": 300.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SM066",
+    "name": "Montelukast - Tablet,10mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 4.0,
+    "qty": 1100.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SM070",
+    "name": "Montelukast grannules - Granules (as sodium salt), 4mg",
+    "category": "Pharmaceuticals",
+    "unit": "Sachet",
+    "unit_cost": 24.0,
+    "qty": 4570.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SM107A",
+    "name": "Surfactant - Poractant alpha (porcine lung phospholipid fraction)",
+    "category": "Pharmaceuticals",
+    "unit": "1.5mL vial",
+    "unit_cost": 28030.0,
+    "qty": 2.0,
+    "expiry": "2028-04-30"
+  },
+  {
+    "sku": "SM012A",
+    "name": "Chlorpheniramine - Syrup, 2mg/5ml (as maleate)",
+    "category": "Pharmaceuticals",
+    "unit": "Units",
+    "unit_cost": 28.0,
+    "qty": 240.0,
+    "expiry": "2029-03-31"
+  },
+  {
+    "sku": "SN001",
+    "name": "Calcium - Suitable paediatric formulation syrup or equivalent",
+    "category": "Pharmaceuticals",
+    "unit": "150-200ml Bottle",
+    "unit_cost": 140.0,
+    "qty": 95.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SN002",
+    "name": "Ferrous with folic acid - Syrup, Equivalent to elemental iron 50 - 100mg/10ml and not more than 1mg/10ml Folic(RANFERON)",
+    "category": "Pharmaceuticals",
+    "unit": "200ml Bottle",
+    "unit_cost": 79.0,
+    "qty": 2800.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "SN003",
+    "name": "Folic acid 5mg - Tablet 5mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablets",
+    "unit_cost": 0.41,
+    "qty": 1700.0,
+    "expiry": "2029-04-30"
+  },
+  {
+    "sku": "SN006",
+    "name": "Iron - Injection, Solution for infusion, 20mg/ml (as Iron Sucrose)",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Ampoule",
+    "unit_cost": 92.69,
+    "qty": 300.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SN007",
+    "name": "Ferrous + Folic salts with Zinc and Vit B complex - Equivalent to elemental iron 50 - 100mg tab/cap and not more than 0.5mg-1.5mg/Tablet Folic ,ascorbic Acid, pyridoxine, cyanocobalamine or equivalent.",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet/C apsule, Blister pack",
+    "unit_cost": 7.0,
+    "qty": 10000.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "SN010",
+    "name": "Vitamin B1 + B6 + B12 - Tablet, (High Potency) B1 200mg, B6 50mg, B12 1000micrograms",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 4.74,
+    "qty": 11400.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "SN022",
+    "name": "Vitamin B + Vitamin C (PABRINEX) - Injection, ascorbic acid 500 mg + nicotinamide 160 mg + pyridoxime hydrochoride 50 mg + riboflavin 4 mg + thiamine hydrochoride 250 mg/ml",
+    "category": "Pharmaceuticals",
+    "unit": "Ampoule/pairs",
+    "unit_cost": 524.0,
+    "qty": 300.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "GEN-0004",
+    "name": "Zinc sulphate - 20mg",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 0.95,
+    "qty": 500.0,
+    "expiry": "2027-05-31"
+  },
+  {
+    "sku": "SN026",
+    "name": "Multi vitamin - Paediatric drops or equivalent",
+    "category": "Pharmaceuticals",
+    "unit": "15-30ml bottle",
+    "unit_cost": 150.0,
+    "qty": 35.0,
+    "expiry": "2028-12-31"
+  },
+  {
+    "sku": "SN049",
+    "name": "Glucosamine + Chondroitin - Tablet, Glucosamine 500mg + Chondroitin Sulfate 200mg or equivalent",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet , Blister pack",
+    "unit_cost": 13.0,
+    "qty": 1200.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SR001",
+    "name": "Activated glutaraldehyde - Solution, 2% (concentrate) with separate activator(cidex)",
+    "category": "Pharmaceuticals",
+    "unit": "5L Tin",
+    "unit_cost": 2750.0,
+    "qty": 28.0,
+    "expiry": "2027-02-28"
+  },
+  {
+    "sku": "SR003",
+    "name": "Chlorhexidine Gluconate - Solution, 0.2% mouthwash",
+    "category": "Pharmaceuticals",
+    "unit": "200ml Bottle",
+    "unit_cost": 110.0,
+    "qty": 115.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SR007",
+    "name": "Methylated Spirit - Solution, 70%V/V",
+    "category": "Pharmaceuticals",
+    "unit": "5L Tin",
+    "unit_cost": 899.0,
+    "qty": 96.0,
+    "expiry": "2031-02-28"
+  },
+  {
+    "sku": "SR008",
+    "name": "Povidone Iodine - Solution, 1%, mouth wash",
+    "category": "Pharmaceuticals",
+    "unit": "100- 125ml Bottle",
+    "unit_cost": 100.0,
+    "qty": 15.0,
+    "expiry": "2027-12-31"
+  },
+  {
+    "sku": "SR009",
+    "name": "Povidone Iodine - Solution, 10%",
+    "category": "Pharmaceuticals",
+    "unit": "500ml Bottle",
+    "unit_cost": 340.0,
+    "qty": 375.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SS001",
+    "name": "Albumin(Human) - Injection, solution for infusion,",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Bottle",
+    "unit_cost": 8000.0,
+    "qty": 110.0,
+    "expiry": "2028-11-30"
+  },
+  {
+    "sku": "SS005",
+    "name": "Calcium gluconate - Injection, solution for injection, 100mg calcium gluconate/ml -10%",
+    "category": "Pharmaceuticals",
+    "unit": "10ml Ampoule",
+    "unit_cost": 63.0,
+    "qty": 400.0,
+    "expiry": "2028-05-31"
+  },
+  {
+    "sku": "SS009",
+    "name": "Hydroxyethyl starch - Infusion, solution for infusion, 6% insodium chloride intravenous infusion 0.9%",
+    "category": "Pharmaceuticals",
+    "unit": "5ml Bottle",
+    "unit_cost": 990.0,
+    "qty": 45.0,
+    "expiry": "2028-01-31"
+  },
+  {
+    "sku": "SS010",
+    "name": "Glucose - Injection, solution for Infusion, 5%",
+    "category": "Pharmaceuticals",
+    "unit": "500 ml Bottle",
+    "unit_cost": 58.0,
+    "qty": 1510.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "SS012",
+    "name": "Glucose - Injection, solution for injection, 50%",
+    "category": "Pharmaceuticals",
+    "unit": "10ml Ampoule",
+    "unit_cost": 55.0,
+    "qty": 20.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SS018",
+    "name": "Sodium lactate, compound solution (RINGER LACTATE) - Injection, solution for infusion, sodium chloride 0.6%, sodium lactate 0.32%, potassium chloride 0.04%, calcium chloride 0.027%",
+    "category": "Pharmaceuticals",
+    "unit": "500ml Collapsibl e Bag/Bottl e",
+    "unit_cost": 58.0,
+    "qty": 7290.0,
+    "expiry": "2029-03-31"
+  },
+  {
+    "sku": "SS023",
+    "name": "Pottassium Chloride - Injection, solution for infusion, 11.2%",
+    "category": "Pharmaceuticals",
+    "unit": "10 ml ampoule",
+    "unit_cost": 27.0,
+    "qty": 340.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SS025",
+    "name": "Sodium chloride - Injection, solution for infusion, 0.9%",
+    "category": "Pharmaceuticals",
+    "unit": "500ml Bottle",
+    "unit_cost": 53.0,
+    "qty": 12031.0,
+    "expiry": "2028-08-31"
+  },
+  {
+    "sku": "GEN-0005",
+    "name": "Sodium chloride - Injection, solution for infusion, 0.9%",
+    "category": "Pharmaceuticals",
+    "unit": "250ml Collapsible Bag",
+    "unit_cost": 400.0,
+    "qty": 40.0,
+    "expiry": "2027-09-30"
+  },
+  {
+    "sku": "SS029",
+    "name": "Water for injection - Sterile water for injection",
+    "category": "Pharmaceuticals",
+    "unit": "10 ml ampoule",
+    "unit_cost": 4.25,
+    "qty": 2800.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SS033A",
+    "name": "Slow Potassium - Tablet, 600mg ,Slow release",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet",
+    "unit_cost": 19.0,
+    "qty": 600.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SS040",
+    "name": "Sodium chloride - Injection, solution for infusion, 30%",
+    "category": "Pharmaceuticals",
+    "unit": "10 ml ampoule",
+    "unit_cost": 490.0,
+    "qty": 1830.0,
+    "expiry": "2028-10-31"
+  },
+  {
+    "sku": "ST027",
+    "name": "Silver Nitrate - Silver ions 0.01% W/V",
+    "category": "Pharmaceuticals",
+    "unit": "100ml Vial",
+    "unit_cost": 2900.0,
+    "qty": 1.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "ST004",
+    "name": "Hydroxyethylcellulose Lubricating Gel (or equivalent)",
+    "category": "Pharmaceuticals",
+    "unit": "42g",
+    "unit_cost": 194.0,
+    "qty": 316.0,
+    "expiry": "2028-02-29"
+  },
+  {
+    "sku": "SU001",
+    "name": "Anti-D Immunoglob ulin(human) - Injection, solution for injection, 300 micrograms (1500 IU)",
+    "category": "Pharmaceuticals",
+    "unit": "Vial / prefilled syringe",
+    "unit_cost": 6500.0,
+    "qty": 30.0,
+    "expiry": "2027-10-31"
+  },
+  {
+    "sku": "SU002",
+    "name": "Rabies vaccine - Injection, powder and solvent for suspension for injection, \u2265 2.5 IU/ml, inactivated",
+    "category": "Pharmaceuticals",
+    "unit": "Single dose Vial/Ampoule",
+    "unit_cost": 1224.0,
+    "qty": 115.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SV003",
+    "name": "Oxytocin - Injection, 10IU",
+    "category": "Pharmaceuticals",
+    "unit": "1ml Ampoule",
+    "unit_cost": 34.0,
+    "qty": 1450.0,
+    "expiry": "2027-04-30"
+  },
+  {
+    "sku": "SV005",
+    "name": "Misoprostol - Tablet, 200micrograms",
+    "category": "Pharmaceuticals",
+    "unit": "Tablet, Blister pack",
+    "unit_cost": 14.66,
+    "qty": 570.0,
+    "expiry": "2027-06-30"
+  },
+  {
+    "sku": "SC013",
+    "name": "Fat emulsion solution 20% 500ml providing 200gm of fat containingLCTS(Intralipids 20%)",
+    "category": "Nutrition Consumables",
+    "unit": "Bags",
+    "unit_cost": 2480.0,
+    "qty": 103.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "SS008",
+    "name": "Amino acid 7% for renal patient (Nephrolsteril ) - 500ml Bottle",
+    "category": "Nutrition Consumables",
+    "unit": "Bottle",
+    "unit_cost": 2930.0,
+    "qty": 120.0,
+    "expiry": "2029-02-28"
+  },
+  {
+    "sku": "SS0036",
+    "name": "Aminoacid 8% for liver patient - 500ml Bottle",
+    "category": "Nutrition Consumables",
+    "unit": "Bottle",
+    "unit_cost": 1885.0,
+    "qty": 120.0,
+    "expiry": "2028-06-30"
+  },
+  {
+    "sku": "NUT007",
+    "name": "Starter Infant Formula - 400G Tin",
+    "category": "Nutrition Consumables",
+    "unit": "Tins",
+    "unit_cost": 956.0,
+    "qty": 28.0,
+    "expiry": "2027-05-31"
+  },
+  {
+    "sku": "NUT0009",
+    "name": "Nutrionationally complete oral feed with fiber in powder form for impaired glucose tolerance providing 0.9 1kal /ml 3.5 4.5gm protein - Tin",
+    "category": "Nutrition Consumables",
+    "unit": "400-500g",
+    "unit_cost": 1351.0,
+    "qty": 30.0,
+    "expiry": "2026-09-30"
+  },
+  {
+    "sku": "GEN-0006",
+    "name": "Proliche",
+    "category": "Nutrition Consumables",
+    "unit": "tins",
+    "unit_cost": 1530.0,
+    "qty": 45.0,
+    "expiry": "2027-08-31"
+  },
+  {
+    "sku": "NUT0011",
+    "name": "High protein sip feed nutrionally complete - 200ml",
+    "category": "Nutrition Consumables",
+    "unit": "ml",
+    "unit_cost": 381.0,
+    "qty": 24.0,
+    "expiry": "2026-11-30"
+  },
+  {
+    "sku": "NUT0016",
+    "name": "Nutrionationally complete oral feed with fiber in powder form . - 400-500",
+    "category": "Nutrition Consumables",
+    "unit": "Tins",
+    "unit_cost": 1233.0,
+    "qty": 74.0,
+    "expiry": "2026-11-30"
+  },
+  {
+    "sku": "NUT0042",
+    "name": "Breast milk stimulator in powder or capsule form milk - 1gm",
+    "category": "Nutrition Consumables",
+    "unit": "Tins",
+    "unit_cost": 200.0,
+    "qty": 240.0,
+    "expiry": "2028-03-31"
+  },
+  {
+    "sku": "NUT0017",
+    "name": "External gravitity Giving set",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 850.0,
+    "qty": 120.0,
+    "expiry": "2027-07-31"
+  },
+  {
+    "sku": "NUT0037",
+    "name": "Feeding bags",
+    "category": "Nutrition Consumables",
+    "unit": "pcs",
+    "unit_cost": 726.0,
+    "qty": 30.0,
+    "expiry": "2029-01-31"
+  },
+  {
+    "sku": "GEN-0007",
+    "name": "Zip lock Dispensing envelopes (Large)",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 5.0,
+    "qty": 7000.0,
+    "expiry": null
+  },
+  {
+    "sku": "GEN-0008",
+    "name": "Zip lock Dispensing envelopes (Small)",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 1.5,
+    "qty": 32000.0,
+    "expiry": "2030-02-28"
+  },
+  {
+    "sku": "GEN-0009",
+    "name": "Prescription pad (green coded)",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 215.0,
+    "qty": 1440.0,
+    "expiry": null
+  },
+  {
+    "sku": "GEN-0010",
+    "name": "Prescription pad (yellow coded)",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 215.0,
+    "qty": 760.0,
+    "expiry": null
+  },
+  {
+    "sku": "GEN-0011",
+    "name": "Prescription pad (blue coded)",
+    "category": "Nutrition Consumables",
+    "unit": "Pcs",
+    "unit_cost": 215.0,
+    "qty": 500.0,
+    "expiry": null
+  },
+  {
+    "sku": "GEN-0012",
+    "name": "Closed System device P28",
+    "category": "Nutrition Consumables",
+    "unit": "pcs",
+    "unit_cost": 450.0,
+    "qty": 150.0,
+    "expiry": "2028-09-30"
+  },
+  {
+    "sku": "GEN-0013",
+    "name": "Closed System Transfer Connector",
+    "category": "Nutrition Consumables",
+    "unit": "pcs",
+    "unit_cost": 230.0,
+    "qty": 100.0,
+    "expiry": "2027-08-31"
+  }
+]

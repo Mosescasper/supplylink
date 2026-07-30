@@ -5,7 +5,10 @@
 {% block page_title %}Requisitions (S11){% endblock %}
 
 {% block page_actions %}
-<a href="{{ url_for('requisition_new') }}" class="btn btn-primary">+ New Requisition</a>
+{% if current_user.role in ['pharmacist', 'store_officer'] %}
+<a href="{{ url_for('requisition_restock_new') }}" class="btn btn-primary">+ Restock Requisition</a>
+{% endif %}
+<a href="{{ url_for('requisition_new') }}" class="btn">+ New Requisition</a>
 {% endblock %}
 
 {% block content %}
@@ -30,6 +33,7 @@
         <thead>
             <tr>
                 <th>Req Number</th>
+                <th>Type</th>
                 <th>Department</th>
                 <th>Issue Point</th>
                 <th>Status</th>
@@ -42,6 +46,7 @@
             {% for req in requisitions %}
             <tr>
                 <td>{{ req.req_number }}</td>
+                <td>{{ req.requisition_type_label }}</td>
                 <td>{{ req.department.name }}</td>
                 <td>{{ req.issue_point }}</td>
                 <td>
@@ -54,6 +59,9 @@
                     {% elif req.status == "Rejected" %}
                         <span class="badge badge-danger">Rejected</span>
                     {% endif %}
+                    {% if req.is_overdue %}
+                        <span class="badge badge-danger">Overdue</span>
+                    {% endif %}
                 </td>
                 <td>{{ req.requested_by.name if req.requested_by else "—" }}</td>
                 <td>{{ req.created_at.strftime('%d %b %Y') if req.created_at else "—" }}</td>
@@ -63,7 +71,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="7" class="empty-state">No requisitions found.</td>
+                <td colspan="8" class="empty-state">No requisitions found.</td>
             </tr>
             {% endfor %}
         </tbody>

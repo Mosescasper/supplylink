@@ -48,12 +48,13 @@
             <tbody id="req-lines-body">
                 <tr class="req-line-row">
                     <td>
-                        <select name="item_id[]" class="form-control" required>
+                        <select name="item_id[]" class="form-control item-select" required>
                             <option value="">-- Select Item --</option>
                             {% for item in items %}
                             <option value="{{ item.id }}">{{ item.name }}</option>
                             {% endfor %}
                         </select>
+                        <div class="line-stats-hint"></div>
                     </td>
                     <td>
                         <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
@@ -81,12 +82,13 @@
 <template id="req-line-template">
     <tr class="req-line-row">
         <td>
-            <select name="item_id[]" class="form-control" required>
+            <select name="item_id[]" class="form-control item-select" required>
                 <option value="">-- Select Item --</option>
                 {% for item in items %}
                 <option value="{{ item.id }}">{{ item.name }}</option>
                 {% endfor %}
             </select>
+            <div class="line-stats-hint"></div>
         </td>
         <td>
             <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
@@ -100,11 +102,24 @@
     </tr>
 </template>
 
+<style>
+.line-stats-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted, #888);
+    margin-top: 0.35rem;
+    min-height: 1.1em;
+}
+.line-stats-hint.stats-warning {
+    color: var(--orange, #ff9d3d);
+}
+</style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     var linesBody = document.getElementById("req-lines-body");
     var addLineBtn = document.getElementById("add-line-btn");
     var lineTemplate = document.getElementById("req-line-template");
+    var departmentSelect = document.getElementById("department_id");
 
     addLineBtn.addEventListener("click", function () {
         var clone = lineTemplate.content.cloneNode(true);
@@ -119,6 +134,54 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     });
+
+    // -----------------------------------------------------------------
+    // Live "dept avg / max allowed" hint
+    // -----------------------------------------------------------------
+    function fetchAndShowStats(selectEl) {
+        var itemId = selectEl.value;
+        var hintEl = selectEl.parentElement.querySelector(".line-stats-hint");
+
+        if (!itemId) {
+            hintEl.textContent = "";
+            return;
+        }
+
+        var departmentId = departmentSelect.value;
+        var url = "/api/requisitions/item-stats?item_id=" + encodeURIComponent(itemId);
+        if (departmentId) {
+            url += "&department_id=" + encodeURIComponent(departmentId);
+        }
+
+        hintEl.textContent = "Loading…";
+        hintEl.classList.remove("stats-warning");
+
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var avgText = (data.avg !== null && data.avg !== undefined)
+                    ? data.avg
+                    : "no history yet";
+                hintEl.textContent = "Your dept's avg: " + avgText + " · Max allowed: " + data.max_allowed;
+            })
+            .catch(function () {
+                hintEl.textContent = "";
+            });
+    }
+
+    function refreshAllLineHints() {
+        linesBody.querySelectorAll(".item-select").forEach(function (select) {
+            if (select.value) fetchAndShowStats(select);
+        });
+    }
+
+    linesBody.addEventListener("change", function (event) {
+        if (event.target.classList.contains("item-select")) {
+            fetchAndShowStats(event.target);
+        }
+    });
+
+    departmentSelect.addEventListener("change", refreshAllLineHints);
 });
 </script>
 {% endblock %}

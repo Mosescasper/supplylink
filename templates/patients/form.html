@@ -7,17 +7,40 @@
     <h1>Register New Patient</h1>
 </div>
 
+{% if possible_matches %}
+<div class="card duplicate-warning-card">
+    <h3 class="duplicate-heading">⚠ Possible duplicate patient{{ "s" if possible_matches|length > 1 else "" }} found</h3>
+    <p class="duplicate-sub">
+        A patient with this exact name is already registered. Check whether this is the same
+        person before continuing — if it is, use their existing record instead of creating a new one.
+    </p>
+    <ul class="duplicate-list">
+        {% for p in possible_matches %}
+        <li>
+            <a href="{{ url_for('patient_detail', patient_id=p.id) }}" target="_blank">{{ p.name }}</a>
+            — <code>{{ p.ip_op_number }}</code> · {{ p.patient_type }}
+            {% if p.clinic_ward_unit %} · {{ p.clinic_ward_unit }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <div class="card">
     <form method="POST" class="form">
+        {% set pf = pending_form if pending_form else {} %}
+
         <div class="form-row">
             <div class="form-group">
                 <label for="name">Patient Name *</label>
-                <input type="text" id="name" name="name" class="form-control" required>
+                <input type="text" id="name" name="name" class="form-control" required
+                       value="{{ pf.get('name', '') }}">
             </div>
             <div class="form-group">
                 <label for="ip_op_number">IP/OP Number *</label>
                 <input type="text" id="ip_op_number" name="ip_op_number" class="form-control" required
-                       placeholder="e.g. OP-2026-04521 or IP-2026-00042">
+                       placeholder="e.g. OP-2026-04521 or IP-2026-00042"
+                       value="{{ pf.get('ip_op_number', '') }}">
             </div>
         </div>
 
@@ -25,50 +48,64 @@
             <div class="form-group">
                 <label for="patient_type">Patient Type *</label>
                 <select id="patient_type" name="patient_type" class="form-control" required>
-                    <option value="Outpatient">Outpatient</option>
-                    <option value="Inpatient">Inpatient</option>
+                    <option value="Outpatient" {{ "selected" if pf.get('patient_type') == 'Outpatient' }}>Outpatient</option>
+                    <option value="Inpatient" {{ "selected" if pf.get('patient_type') == 'Inpatient' }}>Inpatient</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="gender">Gender</label>
                 <select id="gender" name="gender" class="form-control">
                     <option value="">-- Select --</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Male" {{ "selected" if pf.get('gender') == 'Male' }}>Male</option>
+                    <option value="Female" {{ "selected" if pf.get('gender') == 'Female' }}>Female</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="age">Age</label>
-                <input type="number" id="age" name="age" class="form-control" min="0">
+                <input type="number" id="age" name="age" class="form-control" min="0"
+                       value="{{ pf.get('age', '') }}">
             </div>
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label for="weight">Weight (kg)</label>
-                <input type="number" id="weight" name="weight" class="form-control" step="0.1" min="0">
+                <input type="number" id="weight" name="weight" class="form-control" step="0.1" min="0"
+                       value="{{ pf.get('weight', '') }}">
             </div>
             <div class="form-group">
                 <label for="height">Height (cm)</label>
-                <input type="number" id="height" name="height" class="form-control" step="0.1" min="0">
+                <input type="number" id="height" name="height" class="form-control" step="0.1" min="0"
+                       value="{{ pf.get('height', '') }}">
             </div>
             <div class="form-group">
                 <label for="contact">Contact</label>
-                <input type="text" id="contact" name="contact" class="form-control" placeholder="Phone number">
+                <input type="text" id="contact" name="contact" class="form-control" placeholder="Phone number"
+                       value="{{ pf.get('contact', '') }}">
             </div>
         </div>
 
         <div class="form-group">
             <label for="clinic_ward_unit">Clinic / Ward / Unit</label>
             <input type="text" id="clinic_ward_unit" name="clinic_ward_unit" class="form-control"
-                   placeholder="e.g. Maternity Ward, OPD Clinic 2">
+                   placeholder="e.g. Maternity Ward, OPD Clinic 2"
+                   value="{{ pf.get('clinic_ward_unit', '') }}">
         </div>
 
         <div class="form-group">
             <label for="drug_allergies">Known Drug Allergies</label>
             <textarea id="drug_allergies" name="drug_allergies" class="form-control" rows="3"
-                      placeholder="List any known allergies, or leave blank if none"></textarea>
+                      placeholder="List any known allergies, or leave blank if none">{{ pf.get('drug_allergies', '') }}</textarea>
         </div>
+
+        {% if possible_matches %}
+        <div class="confirm-duplicate-box">
+            <label class="confirm-checkbox-label">
+                <input type="checkbox" name="confirm_duplicate" value="1" required>
+                I've checked the record(s) above — this is a different person. Register anyway.
+            </label>
+        </div>
+        {% endif %}
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Register Patient</button>
@@ -94,6 +131,70 @@
     border-radius: 0.5rem;
     padding: 2rem;
     max-width: 720px;
+}
+
+.duplicate-warning-card {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.06);
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.duplicate-heading {
+    margin: 0 0 0.5rem 0;
+    color: #f59e0b;
+    font-size: 1rem;
+}
+
+.duplicate-sub {
+    color: #ccc;
+    font-size: 0.88rem;
+    margin: 0 0 1rem 0;
+}
+
+.duplicate-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.duplicate-list li {
+    margin-bottom: 0.4rem;
+}
+
+.duplicate-list a {
+    color: #f59e0b;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.duplicate-list a:hover {
+    text-decoration: underline;
+}
+
+.confirm-duplicate-box {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-top: -0.5rem;
+}
+
+.confirm-checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    color: #f59e0b;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0;
+    cursor: pointer;
+}
+
+.confirm-checkbox-label input[type="checkbox"] {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
 }
 
 .form {

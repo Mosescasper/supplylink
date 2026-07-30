@@ -260,10 +260,14 @@ textarea.pad-input{ resize:vertical; min-height:2rem; }
   max-height:220px; overflow-y:auto; box-shadow:0 12px 20px -10px rgba(0,0,0,.25);
 }
 .rx-med-results.open{ display:block; }
-.rx-med-result-item{ padding:.5rem .7rem; cursor:pointer; font-size:.87rem; color:#1a2b22; border-bottom:1px solid #e4efe8; }
+.rx-med-result-item{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; padding:.5rem .7rem; cursor:pointer; font-size:.87rem; color:#1a2b22; border-bottom:1px solid #e4efe8; }
 .rx-med-result-item:last-child{ border-bottom:none; }
 .rx-med-result-item:hover, .rx-med-result-item.active{ background:#f2f8f4; }
 .rx-med-result-empty{ padding:.5rem .7rem; font-size:.84rem; color:#6b8478; font-style:italic; }
+.rx-med-result-name{ flex:1; }
+.rx-med-stock{ font-size:.72rem; font-weight:600; white-space:nowrap; }
+.rx-med-stock-ok{ color:#2e8b57; }
+.rx-med-stock-out{ color:#c0392b; }
 
 .pad-footer{ border-top:2px solid #1a2b22; padding-top:1rem; margin-top:.5rem; }
 .pad-footer-row{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #6b8478; padding:.4rem 0; }
@@ -284,10 +288,13 @@ textarea.pad-input{ resize:vertical; min-height:2rem; }
 let lineCount = 0;
 
 // Medicine list for the type-ahead search — filtered entirely client-side
-// so results are instant with no server round-trip per keystroke.
+// so results are instant with no server round-trip per keystroke. `qty` is
+// the current total stock on hand, shown only as an informational label —
+// doctors can still select and prescribe zero-stock items. The pharmacist's
+// dispense screen is what actually enforces available stock.
 const itemsData = [
   {% for item in items %}
-  { id: "{{ item.id }}", name: {{ item.name|tojson }} },
+  { id: "{{ item.id }}", name: {{ item.name|tojson }}, qty: {{ item.quantity_on_hand|int }} },
   {% endfor %}
 ];
 
@@ -310,15 +317,20 @@ function renderMedResults(row, matches) {
   if (!matches.length) {
     resultsBox.innerHTML = '<div class="rx-med-result-empty">No matching medicine</div>';
   } else {
-    resultsBox.innerHTML = matches.map(m =>
-      `<div class="rx-med-result-item" data-id="${m.id}">${m.name}</div>`
-    ).join('');
+    resultsBox.innerHTML = matches.map(m => {
+      const stockLabel = m.qty > 0
+        ? `<span class="rx-med-stock rx-med-stock-ok">${m.qty} in stock</span>`
+        : `<span class="rx-med-stock rx-med-stock-out">Out of stock</span>`;
+      return `<div class="rx-med-result-item" data-id="${m.id}" data-name="${m.name.replace(/"/g, '&quot;')}">
+        <span class="rx-med-result-name">${m.name}</span>${stockLabel}
+      </div>`;
+    }).join('');
     resultsBox.querySelectorAll('.rx-med-result-item').forEach(el => {
       // mousedown (not click) fires before the search input's blur, so the
       // dropdown doesn't vanish before the selection registers.
       el.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        selectMedicine(row, el.dataset.id, el.textContent);
+        selectMedicine(row, el.dataset.id, el.dataset.name);
       });
     });
   }

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Emergency Trolley{% endblock %}
+{% block page_title %}🚑 Emergency Trolley{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p style="color:var(--text-muted); font-size:.88rem; margin-top:0;">
+    Items currently issued onto the Emergency Trolley that haven't been used.
+    Returning a quantity puts it back into stock at wherever it was
+    originally issued from, with a fresh batch number and expiry date.
+  </p>
+
+  {% if lines %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>S11 No.</th>
+        <th>Issue Point</th>
+        <th class="num">Issued</th>
+        <th class="num">Returned</th>
+        <th class="num">Outstanding</th>
+        <th>Return</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>{{ line.item.name if line.item else line.requisition.req_number }}</td>
+        <td><a href="{{ url_for('requisition_detail', req_id=line.requisition.id) }}">{{ line.requisition.req_number }}</a></td>
+        <td>{{ line.requisition.issue_point }}</td>
+        <td class="num">{{ line.quantity_issued|int }}</td>
+        <td class="num">{{ line.quantity_returned|int }}</td>
+        <td class="num">{{ line.quantity_outstanding|int }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('emergency_trolley_return', line_id=line.id) }}"
+                style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="number" name="quantity" class="form-control" placeholder="Qty"
+                   min="0.01" max="{{ line.quantity_outstanding }}" step="any" required
+                   style="width:90px; margin-bottom:0;">
+            <input type="text" name="batch_number" class="form-control" placeholder="Batch no."
+                   required style="width:140px; margin-bottom:0;">
+            <input type="date" name="expiry_date" class="form-control" required
+                   value="{{ today }}" style="width:150px; margin-bottom:0;">
+            <button type="submit" class="btn btn-primary" style="width:auto;">Return</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Nothing currently outstanding on the Emergency Trolley.</p>
+  {% endif %}
+</div>
+{% endblock %}

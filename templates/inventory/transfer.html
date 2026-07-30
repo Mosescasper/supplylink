@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Transfer Batch{% endblock %}
+{% block page_title %}Transfer Batch{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p style="margin-top:0;">
+    <strong>{{ batch.item.name }}</strong> · Batch <code>{{ batch.batch_number }}</code><br>
+    <span style="color:var(--text-muted); font-size:.85rem;">
+      Currently at <strong>{{ batch.location }}</strong> ·
+      {{ batch.quantity_remaining|int }} units remaining ·
+      Expires {{ batch.expiry_date.strftime('%d %b %Y') }}
+    </span>
+  </p>
+
+  {% if destinations %}
+  <form method="POST">
+    <div class="form-group">
+      <label for="to_location">Transfer To</label>
+      <select id="to_location" name="to_location" class="form-control" required>
+        <option value="" disabled selected>Select destination…</option>
+        {% for dest in destinations %}
+        <option value="{{ dest }}">{{ dest }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="quantity">Quantity</label>
+      <input type="number" id="quantity" name="quantity" class="form-control"
+             min="0.01" max="{{ batch.quantity_remaining }}" step="any" required>
+    </div>
+
+    <div class="form-group">
+      <label for="reference">Reference (optional)</label>
+      <input type="text" id="reference" name="reference" class="form-control"
+             placeholder="e.g. Stock Control Card no.">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Transfer</button>
+      <a href="{{ url_for('inventory_detail', item_id=batch.item_id) }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+  {% else %}
+  <p class="empty-state">
+    Stock at <strong>{{ batch.location }}</strong> is at the end of the pipeline
+    (Supply Chain Store → Drug Store → Holding → dispensing area) and can't be
+    transferred onward — it only leaves via dispensing to a patient.
+  </p>
+  <a href="{{ url_for('inventory_detail', item_id=batch.item_id) }}" class="btn btn-secondary">Back</a>
+  {% endif %}
+</div>
+{% endblock %}

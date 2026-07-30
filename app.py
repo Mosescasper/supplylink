@@ -8,13 +8,17 @@ from functools import wraps
 
 from flask import (
     Flask, render_template, redirect, url_for, request, flash,
-    Response, abort, jsonify
+    Response, abort, jsonify, send_from_directory, session
 )
 from flask_login import (
     login_user, logout_user, login_required, current_user
 )
 from flask_migrate import Migrate
 from sqlalchemy import func
+
+import os
+import uuid
+from werkzeug.utils import secure_filename
 
 from config import Config
 from extensions import db, login_manager
@@ -23,7 +27,8 @@ from models import (
     PurchaseOrder, PurchaseOrderLine, Delivery, DeliveryLineItem,
     ProcurementPlan, MonitoringRecord,
     Requisition, RequisitionLine, Patient, Prescription, PrescriptionLine,
-    DischargeRefund, SupplierItem, LOCATIONS, Hospital, Prescriber
+    DischargeRefund, SupplierItem, LOCATIONS, Hospital, Prescriber,
+    PatientNote, PatientMovement, PatientFile, Appointment, PatientDocument, PurchaseRequisition, PurchaseRequisitionLine
 )
 from apis.admin import admin_bp
 from apis.hospital import hospital_bp
@@ -41,10 +46,24 @@ app.register_blueprint(hospital_bp)
 with app.app_context():
     db.create_all()
 
+@app.before_request
+def _enforce_force_logout():
+    if current_user.is_authenticated and current_user.force_logout_at:
+        login_time_str = session.get("login_time")
+        if not login_time_str or datetime.fromisoformat(login_time_str) < current_user.force_logout_at:
+            logout_user()
+            flash("You have been logged out by an administrator.", "info")
+            return redirect(url_for("login"))
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.context_processor
+def inject_pharmacist_scope():
+    if current_user.is_authenticated and current_user.role == "pharmacist":
+        return dict(pharmacist_scope=_pharmacist_scope_locations(current_user))
+    return dict(pharmacist_scope=None)
 
 # Inject hospital info into all templates (letterhead/contact)
 @app.context_processor
@@ -180,6 +199,7 @@ def register():
     departments = Department.query.order_by(Department.name).all()
     # Only these three roles are ever offered / accepted.
     roles = User.ROLES
+    roles_labels = User.ROLE_LABELS  # define once, reuse in every render_template call below
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -191,19 +211,19 @@ def register():
 
         if not name or not email or not password:
             flash("Name, email, and password are required.", "danger")
-            return render_template("register.html", departments=departments, roles=roles)
+            return render_template("register.html", departments=departments, roles=roles, roles_labels=roles_labels)
 
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
-            return render_template("register.html", departments=departments, roles=roles)
+            return render_template("register.html", departments=departments, roles=roles, roles_labels=roles_labels)
 
         if role not in User.ROLES:
             flash("Please select a valid role (Admin, Store Officer, Pharmacist, or Doctor).", "danger")
-            return render_template("register.html", departments=departments, roles=roles)
+            return render_template("register.html", departments=departments, roles=roles, roles_labels=roles_labels)
 
         if User.query.filter_by(email=email).first():
             flash("An account with that email already exists.", "danger")
-            return render_template("register.html", departments=departments, roles=roles)
+            return render_template("register.html", departments=departments, roles=roles, roles_labels=roles_labels)
 
         user = User(name=name, email=email, role=role, department_id=department_id)
         user.set_password(password)
@@ -213,38 +233,146 @@ def register():
         flash("Account created. Please log in.", "success")
         return redirect(url_for("login"))
 
-    return render_template("register.html", departments=departments, roles=roles)
-
+    return render_template("register.html", departments=departments, roles=roles, roles_labels=roles_labels)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # role comes from the hub page's link (?role=admin, ?role=pharmacist, etc.)
+    # Only ever trust it if it's one of the real roles — anything else is ignored.
+    role = request.args.get("role", "").strip()
+    if role and role not in User.ROLES:
+        role = ""
+    role_label = User.ROLE_LABELS.get(role) if role else None
+
     if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
+        # Already logged in, and this hit /login with no specific role
+        # attached (e.g. just clicked "Log in" generically) -> go to dashboard.
+        if not role:
+            return redirect(url_for("dashboard"))
+
+        # Already logged in as the SAME role that was clicked -> no need
+        # to log in again, just go straight to the dashboard.
+        if current_user.role == role:
+            return redirect(url_for("dashboard"))
+
+        # Logged in as a DIFFERENT role than the one just clicked (e.g.
+        # logged in as Admin, clicked Pharmacist) -> log them out first so
+        # the login form actually shows and asks for Pharmacist credentials,
+        # instead of silently bouncing back to the Admin dashboard.
+        logout_user()
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+        submitted_role = request.form.get("role", "").strip()
+        if submitted_role and submitted_role not in User.ROLES:
+            submitted_role = ""
+        submitted_role_label = User.ROLE_LABELS.get(submitted_role) if submitted_role else None
 
         user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            login_user(user)
-            flash(f"Welcome back, {user.name}.", "success")
-            next_url = request.args.get("next")
-            return redirect(next_url or url_for("dashboard"))
+        user = User.query.filter_by(email=email).first()
 
-        flash("Invalid email or password.", "danger")
+        if not user or not user.check_password(password):
+            flash("Invalid email or password.", "danger")
+            return render_template(
+                "login.html", role=submitted_role, role_label=submitted_role_label
+            )
 
-    return render_template("login.html")
+        if submitted_role and user.role != submitted_role:
+            flash(
+                f"These credentials aren't valid for {submitted_role_label} access.",
+                "danger",
+            )
+            return render_template(
+                "login.html", role=submitted_role, role_label=submitted_role_label
+            )
 
+        login_user(user)
+        session["login_time"] = datetime.utcnow().isoformat()
+        flash(f"Welcome back, {user.name}.", "success")
+        next_url = request.args.get("next")
+        return redirect(next_url or url_for("dashboard"))
 
+    return render_template("login.html", role=role, role_label=role_label)
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     flash("You have been logged out.", "info")
-    return redirect(url_for("login"))
+    return redirect(url_for("home"))
 
 
+# ---------------------------------------------------------------------------
+# User management (admin only) — password resets
+# ---------------------------------------------------------------------------
+
+@app.route("/users")
+@login_required
+@role_required("admin")
+def user_list():
+    users = User.query.order_by(User.name).all()
+    return render_template("users/list.html", users=users)
+@app.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin")
+def user_delete(user_id):
+    if user_id == current_user.id:
+        flash("You can't delete your own account.", "danger")
+        return redirect(url_for("user_list"))
+
+    user = User.query.get_or_404(user_id)
+    db.session.delete(user)
+    db.session.commit()
+    flash(f"{user.name} has been deleted.", "success")
+    return redirect(url_for("user_list"))
+
+
+@app.route("/users/<int:user_id>/force-logout", methods=["POST"])
+@login_required
+@role_required("admin")
+def user_force_logout(user_id):
+    if user_id == current_user.id:
+        flash("You can't force-logout your own account.", "danger")
+        return redirect(url_for("user_list"))
+
+    user = User.query.get_or_404(user_id)
+    user.force_logout_at = datetime.utcnow()
+    db.session.commit()
+    flash(f"{user.name} will be logged out on their next request.", "success")
+    return redirect(url_for("user_list"))
+
+@app.route("/users/<int:user_id>/reset-password", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def user_reset_password(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if len(new_password) < 6:
+            flash("Password must be at least 6 characters.", "danger")
+            return render_template("users/reset_password.html", user=user)
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template("users/reset_password.html", user=user)
+
+        user.set_password(new_password)
+        db.session.commit()
+        flash(f"Password reset for {user.name}. Share the new password with them securely.", "success")
+        return redirect(url_for("user_list"))
+
+    return render_template("users/reset_password.html", user=user)
+
+def _scoped_items(items, locations):
+    """Items actually tracked (have or had a batch record) in the given
+    locations — i.e. what this store actually deals in. locations=None
+    means unscoped (every item in the catalog, for admin/doctor)."""
+    if locations is None:
+        return items
+    return [i for i in items if any(b.location in locations for b in i.batches)]
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
@@ -252,12 +380,19 @@ def logout():
 ROLE_LOCATION_SCOPE = {
     "store_officer": ["Drug Store", "Holding"],
     "pharmacist": ["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"],
-    # admin and doctor fall through to None (unscoped). Doctors don't deal
-    # in stock at all — their dashboard branch below shows patient/
-    # prescription info instead of any location-scoped stock figures.
+    "hod_pharmacy": ["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"],
+    "supply_chain": ["Supply Chain Store"],
+    # admin and doctor fall through to None (unscoped)...
+    # Doctors don't deal in stock at all — their dashboard branch shows
+    # patient/prescription info instead. supply_chain deals in suppliers/
+    # POs/procurement rather than any single physical location, so it also
+    # needs the unscoped (whole-hospital) stock picture to plan purchasing.
 }
-
-
+def _current_scope_locations():
+    """Locations the logged-in user's role is restricted to. None = unscoped (admin/doctor)."""
+    if current_user.role == "pharmacist":
+        return _pharmacist_scope_locations(current_user)
+    return ROLE_LOCATION_SCOPE.get(current_user.role)
 def _scoped_quantity(item, locations):
     """On-hand quantity for an item, restricted to a set of locations.
     locations=None means unscoped (all locations)."""
@@ -304,33 +439,134 @@ def _scoped_recent_movements(locations, limit=10):
     return q.order_by(StockMovement.created_at.desc()).limit(limit).all()
 
 
+def _prescribable_items():
+    """Items a doctor can actually prescribe right now — must have real
+    stock in at least one dispensing location (Outpatient or Inpatient
+    Pharmacy), since that's where prescription_dispense() draws from."""
+    dispensing_locations = ("Outpatient Pharmacy", "Inpatient Pharmacy")
+    all_items = Item.query.order_by(Item.name).all()
+    return [
+        i for i in all_items
+        if any(_scoped_quantity(i, [loc]) > 0 for loc in dispensing_locations)
+    ]
+
+def _pharmacist_scope_locations(user):
+    """A pharmacist's scope depends on which pharmacy department they're
+    assigned to at registration. Holding is always included, since stock
+    passes through Holding before reaching either dispensing point.
+    No department (or an unrecognized one) assigned -> fall back to both,
+    so nothing breaks for legacy/general pharmacist accounts."""
+    if user.department and user.department.name == "Outpatient Pharmacy":
+        return ["Holding", "Outpatient Pharmacy"]
+    if user.department and user.department.name == "Inpatient Pharmacy":
+        return ["Holding", "Inpatient Pharmacy"]
+    return ["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"]
+
+
+def _pharmacy_scope_display(scope_locations):
+    """Human-readable label/tag for the dashboard, based on a pharmacist's
+    actual scope rather than the old hardcoded 'all three' text."""
+    names = [loc for loc in scope_locations if loc != "Holding"]
+    if len(scope_locations) == 3:
+        return "across Holding, Outpatient & Inpatient Pharmacy", "HOLDING · OUTPATIENT · INPATIENT"
+    label = "across Holding & " + " & ".join(names)
+    tag = "HOLDING · " + " · ".join(n.split(" ")[0].upper() for n in names)
+    return label, tag
+
 @app.route("/")
 def home():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
     return render_template("home.html")
+def _department_avg_monthly_consumption(department_id, item_id, months=None):
+    """This department's average monthly usage of an item, based on
+    quantity_issued from their own past Issued S11 requisitions over the
+    last `months` months. Returns None if they have no issue history for
+    this item at all (so a first-time request isn't blocked)."""
+    months = months or Config.REQUISITION_CONSUMPTION_MONTHS
+    since = datetime.utcnow() - timedelta(days=months * 30)
 
+    total_issued = (
+        db.session.query(func.sum(RequisitionLine.quantity_issued))
+        .join(Requisition, Requisition.id == RequisitionLine.requisition_id)
+        .filter(
+            Requisition.department_id == department_id,
+            Requisition.status == "Issued",
+            Requisition.created_at >= since,
+            RequisitionLine.item_id == item_id,
+        )
+        .scalar()
+    )
+
+    if not total_issued:
+        return None
+    return float(total_issued) / months
+def _scoped_pending_requisitions_count(role, scope_locations):
+    """How many Pending requisitions each role should see on their
+    dashboard KPI card:
+        admin / supply_chain -> hospital-wide count (unscoped)
+        store_officer        -> only Drug Store issue-point requisitions
+                                 (Holding-issue-point ones are HOD Pharmacy's)
+        hod_pharmacy          -> only Holding issue-point requisitions
+                                 (Drug Store -> Holding -> Dispensing flow:
+                                 OP/IP requisitioning FROM Holding)
+        pharmacist            -> only requisitions THEY personally raised
+    """
+    query = Requisition.query.filter_by(status="Pending")
+
+    if role == "store_officer":
+        query = query.filter(Requisition.issue_point == "Drug Store")
+    elif role == "hod_pharmacy":
+        query = query.filter(Requisition.issue_point == "Holding")
+    elif role == "pharmacist":
+        query = query.filter(Requisition.requested_by_id == current_user.id)
+
+    return query.count()
+
+
+def _can_action_requisition(user, req):
+    """Who may approve/reject/issue a given requisition depends on WHERE
+    it draws stock from, mirroring the physical supply chain:
+    Supply Chain Store -> Drug Store -> Holding -> Dispensing area (OP/IP).
+        issue_point == "Supply Chain Store" -> Supply Chain (or admin) —
+                                                the store_officer restock step
+        issue_point == "Drug Store"         -> Store Officer (or admin)
+        issue_point == "Holding"            -> HOD Pharmacy (or admin) — this
+                                                is the OP/IP-to-Holding step
+    """
+    if user.role == "admin":
+        return True
+    if req.issue_point == "Supply Chain Store" and user.role == "supply_chain":
+        return True
+    if req.issue_point == "Drug Store" and user.role == "store_officer":
+        return True
+    if req.issue_point == "Holding" and user.role == "hod_pharmacy":
+        return True
+    return False
+
+    
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
     role = current_user.role
-    scope_locations = ROLE_LOCATION_SCOPE.get(role)  # None = unscoped
+    scope_locations = _pharmacist_scope_locations(current_user) if role == "pharmacist" else ROLE_LOCATION_SCOPE.get(role)
 
     items = Item.query.all()
+    scoped_items = _scoped_items(items, scope_locations)
 
     near_expiry_batches = _scoped_near_expiry_batches(scope_locations)
-    low_stock_items = _scoped_low_stock_items(items, scope_locations)
+    low_stock_items = _scoped_low_stock_items(scoped_items, scope_locations)
     total_stock_value = _scoped_stock_value(items, scope_locations)
 
     kpis = {
-        "total_items": len(items),
+        "total_items": len(scoped_items),
         "near_expiry_count": len(near_expiry_batches),
         "low_stock_count": len(low_stock_items),
         "open_purchase_orders": PurchaseOrder.query.filter(
             PurchaseOrder.status.in_(["Draft", "Sent"])
         ).count(),
-        "pending_requisitions": Requisition.query.filter_by(status="Pending").count(),
+       "pending_requisitions": _scoped_pending_requisitions_count(role, scope_locations),
         "total_stock_value": total_stock_value,
     }
 
@@ -356,8 +592,28 @@ def dashboard():
         currency=Config.CURRENCY,
         role=role,
         today=date.today(),
+        # NEW — comma-joined location list for the dashboard chart JS to
+        # scope its API calls with (empty string = unscoped, i.e. admin).
+        location_scope_param=",".join(scope_locations) if scope_locations else "",
     )
-
+    # -----------------------------------------------------------------
+    # Critical alerts (admin/store_officer only) — a step more urgent
+    # than the general "near expiry" / "low stock" panels above.
+    # -----------------------------------------------------------------
+    if role in ("admin", "store_officer"):
+        today_date = date.today()
+        critical_expiry_batches = [
+            b for b in Batch.query.filter(Batch.quantity_remaining > 0).all()
+            if 0 <= (b.expiry_date - today_date).days <= 30
+            and (not scope_locations or b.location in scope_locations)
+        ]
+        critical_low_stock_items = [
+            i for i in scoped_items
+            if _scoped_quantity(i, scope_locations) <= 0
+            or (i.reorder_level and _scoped_quantity(i, scope_locations) <= float(i.reorder_level) * 0.25)
+        ]
+        context["critical_expiry_count"] = len(critical_expiry_batches)
+        context["critical_low_stock_count"] = len(critical_low_stock_items)
     # -----------------------------------------------------------------
     # Role-specific extra panels
     # -----------------------------------------------------------------
@@ -373,7 +629,18 @@ def dashboard():
         context["recent_pos"] = (
             PurchaseOrder.query.order_by(PurchaseOrder.order_date.desc()).limit(6).all()
         )
-
+        context["po_fulfillment"] = (
+            PurchaseOrder.query.filter(PurchaseOrder.status.in_(["Received", "Partially Received"]))
+            .order_by(PurchaseOrder.order_date.desc())
+            .limit(8)
+            .all()
+        )
+        context["requisition_fulfillment"] = (
+            Requisition.query.filter(Requisition.status == "Issued")
+            .order_by(Requisition.created_at.desc())
+            .limit(8)
+            .all()
+        )
     elif role == "store_officer":
         context["drug_store_value"] = _scoped_stock_value(items, ["Drug Store"])
         context["holding_value"] = _scoped_stock_value(items, ["Holding"])
@@ -383,15 +650,18 @@ def dashboard():
             .limit(6)
             .all()
         )
+        # Only Drug Store issue-point requisitions are Store Officer's to
+        # action now — Holding issue-point ones go to HOD Pharmacy instead.
         context["pending_requisitions_to_action"] = (
             Requisition.query.filter(
                 Requisition.status == "Pending",
-                Requisition.issue_point.in_(["Drug Store", "Holding"]),
+                Requisition.issue_point == "Drug Store",
             )
             .order_by(Requisition.created_at.desc())
             .limit(6)
             .all()
         )
+        
         context["transfers_to_holding"] = (
             StockMovement.query.filter(
                 StockMovement.movement_type == "transfer",
@@ -402,11 +672,29 @@ def dashboard():
             .limit(6)
             .all()
         )
-
+        context["po_fulfillment"] = (
+            PurchaseOrder.query.filter(PurchaseOrder.status.in_(["Received", "Partially Received"]))
+            .order_by(PurchaseOrder.order_date.desc())
+            .limit(8)
+            .all()
+        )
+        context["requisition_fulfillment"] = (
+            Requisition.query.filter(
+                Requisition.status == "Issued",
+                Requisition.issue_point.in_(["Drug Store", "Holding"]),
+            )
+            .order_by(Requisition.created_at.desc())
+            .limit(8)
+            .all()
+        )
     elif role == "pharmacist":
+        pharmacy_location_cards = [(loc, _scoped_stock_value(items, [loc])) for loc in scope_locations]
+        context["pharmacy_location_cards"] = pharmacy_location_cards
+        context["pharmacy_kpi_row_class"] = "kpi-row--three" if len(scope_locations) == 3 else "kpi-row--two"
+        pharmacy_scope_label, pharmacy_scope_tag = _pharmacy_scope_display(scope_locations)
+        context["pharmacy_scope_label"] = pharmacy_scope_label
+        context["pharmacy_scope_tag"] = pharmacy_scope_tag
         context["holding_value"] = _scoped_stock_value(items, ["Holding"])
-        context["outpatient_value"] = _scoped_stock_value(items, ["Outpatient Pharmacy"])
-        context["inpatient_value"] = _scoped_stock_value(items, ["Inpatient Pharmacy"])
         context["my_requisitions"] = (
             Requisition.query.filter_by(requested_by_id=current_user.id)
             .order_by(Requisition.created_at.desc())
@@ -429,6 +717,71 @@ def dashboard():
         context["dispensed_prescriptions"] = dispensed_prescriptions
         context["partial_prescriptions"] = partial_prescriptions
         context["total_prescriptions"] = total_prescriptions
+
+    elif role == "hod_pharmacy":
+        context["holding_value"] = _scoped_stock_value(items, ["Holding"])
+        context["outpatient_value"] = _scoped_stock_value(items, ["Outpatient Pharmacy"])
+        context["inpatient_value"] = _scoped_stock_value(items, ["Inpatient Pharmacy"])
+
+        # Requisitions raised by OP/IP Pharmacy drawing on Holding stock,
+        # waiting on HOD Pharmacy sign-off before they can be issued.
+        context["requisitions_to_approve"] = (
+            Requisition.query.filter(
+                Requisition.status == "Pending",
+                Requisition.issue_point == "Holding",
+            )
+            .order_by(Requisition.created_at.asc())
+            .all()
+        )
+
+        # Requisitions already approved by HOD Pharmacy, waiting to be
+        # physically issued from Holding.
+        context["approved_awaiting_issue"] = (
+            Requisition.query.filter(
+                Requisition.status == "Approved",
+                Requisition.issue_point == "Holding",
+            )
+            .order_by(Requisition.created_at.asc())
+            .all()
+        )
+
+        # Full drug-flow trail across Holding -> Outpatient/Inpatient
+        # Pharmacy, so HOD can track movement through both dispensing points.
+        context["pharmacy_flow_movements"] = (
+            StockMovement.query.filter(
+                (StockMovement.from_location.in_(["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"]))
+                | (StockMovement.to_location.in_(["Holding", "Outpatient Pharmacy", "Inpatient Pharmacy"]))
+            )
+            .order_by(StockMovement.created_at.desc())
+            .limit(15)
+            .all()
+        )
+
+        context["requisition_fulfillment"] = (
+            Requisition.query.filter(
+                Requisition.status == "Issued",
+                Requisition.issue_point == "Holding",
+            )
+            .order_by(Requisition.created_at.desc())
+            .limit(8)
+            .all()
+        )
+
+    elif role == "supply_chain":
+        context["open_pos"] = (
+            PurchaseOrder.query.filter(PurchaseOrder.status.in_(["Draft", "Sent"]))
+            .order_by(PurchaseOrder.order_date.desc())
+            .limit(8)
+            .all()
+        )
+        context["po_fulfillment"] = (
+            PurchaseOrder.query.filter(PurchaseOrder.status.in_(["Received", "Partially Received"]))
+            .order_by(PurchaseOrder.order_date.desc())
+            .limit(8)
+            .all()
+        )
+        context["supplier_count"] = Supplier.query.count()
+        context["low_stock_for_reorder"] = _scoped_low_stock_items(items, None)[:8]
     elif role == "doctor":
         context["my_prescriptions"] = (
             Prescription.query.filter_by(written_by_id=current_user.id)
@@ -441,6 +794,21 @@ def dashboard():
         ).count()
         context["recent_patients"] = (
             Patient.query.order_by(Patient.id.desc()).limit(6).all()
+        )
+
+    elif role == "registry":
+        context["total_patients"] = Patient.query.count()
+        context["recent_patients"] = (
+            Patient.query.order_by(Patient.id.desc()).limit(10).all()
+        )
+        context["upcoming_appointments"] = (
+            Appointment.query.filter(
+                Appointment.status == "Scheduled",
+                Appointment.scheduled_date >= date.today(),
+            )
+            .order_by(Appointment.scheduled_date.asc())
+            .limit(10)
+            .all()
         )
 
     return render_template("dashboard.html", **context)
@@ -464,13 +832,18 @@ def inventory_list():
 
     items = query.order_by(Item.name).all()
     categories = Category.query.order_by(Category.name).all()
-    return render_template("inventory/list.html", items=items, categories=categories,
-                            q=q, currency=Config.CURRENCY)
 
+    scope_locations = _current_scope_locations()
+    for item in items:
+        item.scoped_quantity = _scoped_quantity(item, scope_locations)
+        item.scoped_is_low = item.scoped_quantity <= (item.reorder_level or 0)
+
+    return render_template("inventory/list.html", items=items, categories=categories,
+                            q=q, currency=Config.CURRENCY, scope_locations=scope_locations)
 
 @app.route("/inventory/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def inventory_new():
     categories = Category.query.order_by(Category.name).all()
     suppliers = Supplier.query.order_by(Supplier.name).all()
@@ -486,23 +859,40 @@ def inventory_new():
             reorder_level=request.form.get("reorder_level", 0) or 0,
         )
         db.session.add(item)
+        db.session.flush()  # assigns item.id before the batch references it
+
+        # Optional initial stock — batch number / expiry date / quantity are
+        # all-or-nothing: only create a batch if these were actually filled
+        # in, so a plain catalog-only item can still be added without one.
+        batch_number = request.form.get("batch_number", "").strip()
+        expiry_date_str = request.form.get("expiry_date", "").strip()
+        initial_quantity = request.form.get("initial_quantity", "").strip()
+
+        if batch_number and expiry_date_str and initial_quantity:
+            quantity = float(initial_quantity)
+            batch = Batch(
+                item_id=item.id,
+                batch_number=batch_number,
+                expiry_date=datetime.strptime(expiry_date_str, "%Y-%m-%d").date(),
+                quantity_received=quantity,
+                quantity_remaining=quantity,
+                location="Supply Chain Store",
+            )
+            db.session.add(batch)
+            db.session.flush()
+
+            log_movement(item, batch, "receipt", quantity, to_location="Supply Chain Store",
+                         reference="Initial stock on item creation")
+
         db.session.commit()
         flash(f"Item {item.name} added.", "success")
         return redirect(url_for("inventory_list"))
 
     return render_template("inventory/form.html", categories=categories, suppliers=suppliers, item=None)
 
-
-@app.route("/inventory/<int:item_id>")
-@login_required
-def inventory_detail(item_id):
-    item = Item.query.get_or_404(item_id)
-    return render_template("inventory/detail.html", item=item, currency=Config.CURRENCY,
-                            expiry_months=Config.EXPIRY_ALERT_MONTHS, today=date.today())
-
 @app.route("/inventory/<int:item_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def inventory_edit(item_id):
     item = Item.query.get_or_404(item_id)
     categories = Category.query.order_by(Category.name).all()
@@ -527,6 +917,26 @@ def inventory_edit(item_id):
 
     return render_template("inventory/form.html", categories=categories, suppliers=suppliers, item=item)
 
+@app.route("/inventory/<int:item_id>")
+@login_required
+def inventory_detail(item_id):
+    item = Item.query.get_or_404(item_id)
+    scope_locations = _current_scope_locations()
+
+    if scope_locations:
+        visible_batches = [b for b in item.batches if b.location in scope_locations]
+        by_location = {loc: qty for loc, qty in item.quantity_on_hand_by_location.items()
+                        if loc in scope_locations}
+        scoped_quantity = sum(by_location.values())
+    else:
+        visible_batches = list(item.batches)
+        by_location = item.quantity_on_hand_by_location
+        scoped_quantity = item.quantity_on_hand
+
+    return render_template("inventory/detail.html", item=item, currency=Config.CURRENCY,
+                            expiry_months=Config.EXPIRY_ALERT_MONTHS, today=date.today(),
+                            visible_batches=visible_batches, by_location=by_location,
+                            scoped_quantity=scoped_quantity)
 
 @app.route("/inventory/<int:item_id>/delete", methods=["POST"])
 @login_required
@@ -551,11 +961,15 @@ def inventory_batches():
     today = date.today()
     expiry_alert_cutoff = today + relativedelta(months=Config.EXPIRY_ALERT_MONTHS)
 
+    scope_locations = _current_scope_locations()
+
     query = Batch.query.join(Item)
     if q:
         query = query.filter(Item.name.ilike(f"%{q}%") | Batch.batch_number.ilike(f"%{q}%"))
     if location:
         query = query.filter(Batch.location == location)
+    if scope_locations:
+        query = query.filter(Batch.location.in_(scope_locations))
     if expiry_filter == "near":
         query = query.filter(Batch.expiry_date >= today, Batch.expiry_date <= expiry_alert_cutoff)
     elif expiry_filter == "expired":
@@ -568,9 +982,9 @@ def inventory_batches():
         batches=batches,
         today=today,
         expiry_alert_cutoff=expiry_alert_cutoff,
+        scope_locations=scope_locations,
+        location_options=scope_locations or LOCATIONS,
     )
-
-
 @app.route("/batches/export.csv")
 @login_required
 def batches_export():
@@ -582,11 +996,15 @@ def batches_export():
     today = date.today()
     expiry_alert_cutoff = today + relativedelta(months=Config.EXPIRY_ALERT_MONTHS)
 
+    scope_locations = _current_scope_locations()
+
     query = Batch.query.join(Item)
     if q:
         query = query.filter(Item.name.ilike(f"%{q}%") | Batch.batch_number.ilike(f"%{q}%"))
     if location:
         query = query.filter(Batch.location == location)
+    if scope_locations:
+        query = query.filter(Batch.location.in_(scope_locations))
     if expiry_filter == "near":
         query = query.filter(Batch.expiry_date >= today, Batch.expiry_date <= expiry_alert_cutoff)
     elif expiry_filter == "expired":
@@ -606,9 +1024,9 @@ def batches_export():
 
 @app.route("/batches/receive", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def batch_receive():
-    """Manual/ad-hoc receipt of stock directly into the Drug Store (outside a PO)."""
+    """Manual/ad-hoc receipt of stock directly into the Supply Chain Store (outside a PO)."""
     items = Item.query.order_by(Item.name).all()
 
     if request.method == "POST":
@@ -621,18 +1039,36 @@ def batch_receive():
             expiry_date=datetime.strptime(request.form["expiry_date"], "%Y-%m-%d").date(),
             quantity_received=quantity,
             quantity_remaining=quantity,
-            location="Drug Store",
+            location="Supply Chain Store",
         )
         db.session.add(batch)
         db.session.flush()
 
-        log_movement(item, batch, "receipt", quantity, to_location="Drug Store",
+        log_movement(item, batch, "receipt", quantity, to_location="Supply Chain Store",
                      reference=request.form.get("reference", "Manual receipt"))
         db.session.commit()
-        flash(f"Received {quantity} units of {item.name} into Drug Store.", "success")
+        flash(f"Received {quantity} units of {item.name} into Supply Chain Store.", "success")
         return redirect(url_for("inventory_detail", item_id=item.id))
 
     return render_template("inventory/receive.html", items=items)
+
+
+ALLOWED_TRANSFER_DESTINATIONS = {
+    "Supply Chain Store": ["Drug Store"],
+    "Drug Store": ["Holding"],
+    "Holding": ["Outpatient Pharmacy", "Inpatient Pharmacy"],
+    # Outpatient Pharmacy / Inpatient Pharmacy are end points — stock only
+    # leaves them via dispensing (prescription_dispense / outpatient_dispense
+    # / inpatient_dispense), never via a manual transfer.
+}
+
+
+def _allowed_transfer_destinations(current_location):
+    """Where a batch at `current_location` is allowed to move to next,
+    enforcing the Supply Chain Store -> Drug Store -> Holding -> dispensing
+    area pipeline. Locations not in the mapping (the two dispensing areas)
+    have no valid transfer destinations at all."""
+    return ALLOWED_TRANSFER_DESTINATIONS.get(current_location, [])
 
 
 @app.route("/batches/<int:batch_id>/transfer", methods=["GET", "POST"])
@@ -640,10 +1076,19 @@ def batch_receive():
 @role_required("admin", "store_officer", "pharmacist")
 def batch_transfer(batch_id):
     batch = Batch.query.get_or_404(batch_id)
+    allowed_destinations = _allowed_transfer_destinations(batch.location)
 
     if request.method == "POST":
         quantity = float(request.form.get("quantity", 0) or 0)
-        to_location = request.form["to_location"]
+        to_location = request.form.get("to_location", "")
+
+        if to_location not in allowed_destinations:
+            flash(
+                f"Stock at {batch.location} can only move to: "
+                f"{', '.join(allowed_destinations) or 'nowhere — this is an end point'}.",
+                "danger",
+            )
+            return redirect(url_for("batch_transfer", batch_id=batch.id))
 
         if quantity <= 0 or quantity > float(batch.quantity_remaining or 0):
             flash("Invalid transfer quantity.", "danger")
@@ -670,23 +1115,24 @@ def batch_transfer(batch_id):
                      from_location=from_location, to_location=to_location,
                      reference=request.form.get("reference", "Stock Control Card transfer"))
         db.session.commit()
-        flash(f"Transferred {quantity} units from {from_location} to {to_location}.", "success")
+        flash(f"Transferred {quantity:g} units from {from_location} to {to_location}.", "success")
         return redirect(url_for("inventory_detail", item_id=batch.item_id))
 
-    return render_template("inventory/transfer.html", batch=batch, locations=LOCATIONS)
-
+    return render_template("inventory/transfer.html", batch=batch,
+                            destinations=allowed_destinations, currency=Config.CURRENCY)
 
 @app.route("/expiry")
 @login_required
 def expiry_report():
+    scope_locations = _current_scope_locations()
     batches = [
         b for b in Batch.query.order_by(Batch.expiry_date).all()
         if (b.quantity_remaining or 0) > 0
+        and (not scope_locations or b.location in scope_locations)
     ]
     near_expiry = [b for b in batches if b.is_near_expiry(Config.EXPIRY_ALERT_MONTHS)]
     return render_template("inventory/expiry.html", batches=batches, near_expiry=near_expiry,
-                            months=Config.EXPIRY_ALERT_MONTHS)
-
+                            months=Config.EXPIRY_ALERT_MONTHS, scope_locations=scope_locations)
 
 @app.route("/expiry-alerts")
 @login_required
@@ -700,11 +1146,15 @@ def expiry_alerts():
 
     today = date.today()
 
+    scope_locations = _current_scope_locations()
+
     query = Batch.query.join(Item).filter(Batch.quantity_remaining > 0)
     if q:
         query = query.filter(Item.name.ilike(f"%{q}%") | Batch.batch_number.ilike(f"%{q}%"))
     if location:
         query = query.filter(Batch.location == location)
+    if scope_locations:
+        query = query.filter(Batch.location.in_(scope_locations))
 
     all_batches = query.order_by(Batch.expiry_date.asc()).all()
 
@@ -748,8 +1198,8 @@ def expiry_alerts():
         alerts=alerts,
         summary=summary,
         currency=Config.CURRENCY,
+        scope_locations=scope_locations,
     )
-
 
 @app.route("/expiry-alerts/export.csv")
 @login_required
@@ -761,14 +1211,17 @@ def expiry_alerts_export():
 
     today = date.today()
 
+    scope_locations = _current_scope_locations()
+
     query = Batch.query.join(Item).filter(Batch.quantity_remaining > 0)
     if q:
         query = query.filter(Item.name.ilike(f"%{q}%") | Batch.batch_number.ilike(f"%{q}%"))
     if location:
         query = query.filter(Batch.location == location)
+    if scope_locations:
+        query = query.filter(Batch.location.in_(scope_locations))
 
     all_batches = query.order_by(Batch.expiry_date.asc()).all()
-
     rows = []
     for b in all_batches:
         days_remaining = (b.expiry_date - today).days
@@ -814,7 +1267,7 @@ def supplier_list():
 
 @app.route("/suppliers/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def supplier_new():
     if request.method == "POST":
         supplier = Supplier(
@@ -868,7 +1321,7 @@ def supplier_detail(supplier_id):
 
 @app.route("/suppliers/<int:supplier_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def supplier_edit(supplier_id):
     supplier = Supplier.query.get_or_404(supplier_id)
 
@@ -954,7 +1407,7 @@ def hospital_edit(hospital_id):
 
 @app.route("/suppliers/<int:supplier_id>/catalog/add", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def supplier_catalog_add(supplier_id):
     """Add an item to a supplier's catalog (what they typically stock,
     at what price, with what lead time). Purely informational."""
@@ -986,7 +1439,7 @@ def supplier_catalog_add(supplier_id):
 
 @app.route("/suppliers/<int:supplier_id>/catalog/<int:entry_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def supplier_catalog_delete(supplier_id, entry_id):
     entry = SupplierItem.query.get_or_404(entry_id)
     if entry.supplier_id != supplier_id:
@@ -1013,7 +1466,7 @@ def procurement_plan_list():
 
 @app.route("/procurement-plan/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def procurement_plan_new():
     items = Item.query.order_by(Item.name).all()
 
@@ -1044,7 +1497,7 @@ def po_list():
 
 @app.route("/purchase-orders/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def po_new():
     suppliers = Supplier.query.order_by(Supplier.name).all()
     items = Item.query.order_by(Item.name).all()
@@ -1090,7 +1543,7 @@ def po_detail(po_id):
 
 @app.route("/purchase-orders/<int:po_id>/send", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def po_send(po_id):
     po = PurchaseOrder.query.get_or_404(po_id)
     if po.status == "Draft":
@@ -1102,7 +1555,7 @@ def po_send(po_id):
 
 @app.route("/purchase-orders/<int:po_id>/receive", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def po_receive(po_id):
     po = PurchaseOrder.query.get_or_404(po_id)
 
@@ -1122,19 +1575,19 @@ def po_receive(po_id):
                 expiry_date=datetime.strptime(expiry_str, "%Y-%m-%d").date(),
                 quantity_received=qty_received,
                 quantity_remaining=qty_received,
-                location="Drug Store",
+                location="Supply Chain Store",
             )
             db.session.add(batch)
             db.session.flush()
 
             log_movement(line.item, batch, "receipt", qty_received,
-                         to_location="Drug Store", reference=po.po_number)
+                         to_location="Supply Chain Store", reference=po.po_number)
 
             line.quantity_received = (line.quantity_received or 0) + qty_received
 
         po.status = "Received"
         db.session.commit()
-        flash(f"{po.po_number} received into Drug Store.", "success")
+        flash(f"{po.po_number} received into Supply Chain Store.", "success")
         return redirect(url_for("po_detail", po_id=po.id))
 
     return render_template("purchase_orders/receive.html", po=po)
@@ -1142,7 +1595,7 @@ def po_receive(po_id):
 
 @app.route("/purchase-orders/<int:po_id>/cancel", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def po_cancel(po_id):
     po = PurchaseOrder.query.get_or_404(po_id)
     po.status = "Cancelled"
@@ -1150,6 +1603,242 @@ def po_cancel(po_id):
     flash(f"{po.po_number} cancelled.", "info")
     return redirect(url_for("po_list"))
 
+# ---------------------------------------------------------------------------
+# Purchase Requisitions (department -> Supply Chain -> Purchase Order)
+#
+# Different from Requisition (S11) above: that one issues stock the store
+# ALREADY has. This one is for a department asking Supply Chain to actually
+# buy something that isn't in stock — reviewed, then optionally converted
+# into a Draft PurchaseOrder.
+# ---------------------------------------------------------------------------
+
+@app.route("/purchase-requisitions")
+@login_required
+def purchase_requisition_list():
+    status = request.args.get("status")
+    query = PurchaseRequisition.query
+    if current_user.role not in ("admin", "supply_chain"):
+        query = query.filter_by(requested_by_id=current_user.id)
+    if status:
+        query = query.filter_by(status=status)
+    prs = query.order_by(PurchaseRequisition.created_at.desc()).all()
+    return render_template("purchase_requisitions/list.html", prs=prs, status=status)
+
+
+@app.route("/purchase-requisitions/new", methods=["GET", "POST"])
+@login_required
+def purchase_requisition_new():
+    departments = Department.query.order_by(Department.name).all()
+    items = Item.query.order_by(Item.name).all()
+
+    if request.method == "POST":
+        pr = PurchaseRequisition(
+            pr_number=next_reference("PR", PurchaseRequisition, "pr_number"),
+            department_id=request.form.get("department_id") or current_user.department_id,
+            requested_by_id=current_user.id,
+            status="Pending",
+            notes=request.form.get("notes", "").strip() or None,
+        )
+        db.session.add(pr)
+        db.session.flush()
+
+        item_ids = request.form.getlist("item_id[]")
+        item_names = request.form.getlist("item_name[]")
+        quantities = request.form.getlist("quantity_requested[]")
+        units = request.form.getlist("unit_of_issue[]")
+        justifications = request.form.getlist("justification[]")
+
+        line_count = 0
+        for item_id, item_name, qty, unit, justification in zip(
+            item_ids, item_names, quantities, units, justifications
+        ):
+            if not item_name.strip() or not qty:
+                continue
+            existing_item = Item.query.get(item_id) if item_id else None
+            db.session.add(PurchaseRequisitionLine(
+                purchase_requisition_id=pr.id,
+                item_id=existing_item.id if existing_item else None,
+                item_name=existing_item.name if existing_item else item_name.strip(),
+                quantity_requested=float(qty),
+                unit_of_issue=(unit.strip() if unit and unit.strip()
+                               else (existing_item.unit_of_issue if existing_item else None)),
+                justification=justification.strip() or None,
+            ))
+            line_count += 1
+
+        if line_count == 0:
+            db.session.rollback()
+            flash("Add at least one item before submitting.", "danger")
+            return render_template("purchase_requisitions/form.html", departments=departments, items=items)
+
+        db.session.commit()
+        flash(f"Purchase requisition {pr.pr_number} submitted to Supply Chain.", "success")
+        return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+    return render_template("purchase_requisitions/form.html", departments=departments, items=items)
+
+ROLE_RESTOCK_SOURCE_DEST = {
+    "pharmacist": ("Drug Store", "Holding"),
+    "store_officer": ("Supply Chain Store", "Drug Store"),
+}
+
+
+@app.route("/requisitions/restock/new", methods=["GET", "POST"])
+@login_required
+@role_required("pharmacist", "store_officer")
+def requisition_restock_new():
+    source, destination = ROLE_RESTOCK_SOURCE_DEST[current_user.role]
+    items = Item.query.order_by(Item.name).all()
+
+    if request.method == "POST":
+        # Requisition.department_id is required — fall back to a
+        # store-named department if this account has none assigned.
+        department_id = current_user.department_id
+        if not department_id:
+            dept = Department.query.filter_by(name=source).first()
+            if not dept:
+                dept = Department(name=source, is_store=True)
+                db.session.add(dept)
+                db.session.flush()
+            department_id = dept.id
+
+        req = Requisition(
+            req_number=next_reference("S11", Requisition, "req_number"),
+            department_id=department_id,
+            issue_point=source,
+            destination_location=destination,
+            requested_by_id=current_user.id,
+            status="Pending",
+        )
+        db.session.add(req)
+        db.session.flush()
+
+        item_ids = request.form.getlist("item_id[]")
+        quantities = request.form.getlist("quantity_required[]")
+        remarks = request.form.getlist("remarks[]")
+
+        line_count = 0
+        for item_id, qty, remark in zip(item_ids, quantities, remarks):
+            if not item_id or not qty:
+                continue
+            db.session.add(RequisitionLine(
+                requisition_id=req.id, item_id=item_id,
+                quantity_required=qty, remarks=remark,
+            ))
+            line_count += 1
+
+        if line_count == 0:
+            db.session.rollback()
+            flash("Add at least one item before submitting.", "danger")
+            return render_template("requisitions/restock_form.html", items=items,
+                                    source=source, destination=destination)
+
+        db.session.commit()
+        flash(f"Restock requisition {req.req_number} sent: {source} → {destination}.", "success")
+        return redirect(url_for("requisition_detail", req_id=req.id))
+
+    return render_template("requisitions/restock_form.html", items=items,
+                            source=source, destination=destination)
+
+@app.route("/purchase-requisitions/<int:pr_id>")
+@login_required
+def purchase_requisition_detail(pr_id):
+    pr = PurchaseRequisition.query.get_or_404(pr_id)
+    suppliers = (
+        Supplier.query.order_by(Supplier.name).all()
+        if current_user.role in ("admin", "supply_chain") else []
+    )
+    return render_template("purchase_requisitions/detail.html", pr=pr, suppliers=suppliers)
+
+
+@app.route("/purchase-requisitions/<int:pr_id>/approve", methods=["POST"])
+@login_required
+@role_required("admin", "supply_chain")
+def purchase_requisition_approve(pr_id):
+    pr = PurchaseRequisition.query.get_or_404(pr_id)
+    if pr.status != "Pending":
+        flash("Only pending purchase requisitions can be approved.", "warning")
+        return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+    pr.status = "Approved"
+    pr.reviewed_by_id = current_user.id
+    pr.reviewed_at = datetime.utcnow()
+    pr.review_notes = request.form.get("review_notes", "").strip() or None
+    db.session.commit()
+    flash(f"{pr.pr_number} approved.", "success")
+    return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+
+@app.route("/purchase-requisitions/<int:pr_id>/reject", methods=["POST"])
+@login_required
+@role_required("admin", "supply_chain")
+def purchase_requisition_reject(pr_id):
+    pr = PurchaseRequisition.query.get_or_404(pr_id)
+    if pr.status != "Pending":
+        flash("Only pending purchase requisitions can be rejected.", "warning")
+        return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+    pr.status = "Rejected"
+    pr.reviewed_by_id = current_user.id
+    pr.reviewed_at = datetime.utcnow()
+    pr.review_notes = request.form.get("review_notes", "").strip() or None
+    db.session.commit()
+    flash(f"{pr.pr_number} rejected.", "info")
+    return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+
+@app.route("/purchase-requisitions/<int:pr_id>/convert", methods=["POST"])
+@login_required
+@role_required("admin", "supply_chain")
+def purchase_requisition_convert(pr_id):
+    """Approved -> Draft PurchaseOrder. Only lines already linked to a real
+    catalog Item carry over automatically; brand-new items (free-text only)
+    are skipped and flagged, since a PurchaseOrderLine requires a real Item —
+    add the item via Inventory first, then add it to the PO manually."""
+    pr = PurchaseRequisition.query.get_or_404(pr_id)
+    if pr.status != "Approved":
+        flash("Only approved purchase requisitions can be converted to a PO.", "warning")
+        return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+    supplier_id = request.form.get("supplier_id")
+    if not supplier_id:
+        flash("Choose a supplier to convert this into a purchase order.", "danger")
+        return redirect(url_for("purchase_requisition_detail", pr_id=pr.id))
+
+    po = PurchaseOrder(
+        po_number=next_reference("PO", PurchaseOrder, "po_number"),
+        supplier_id=supplier_id,
+        status="Draft",
+    )
+    db.session.add(po)
+    db.session.flush()
+
+    skipped = []
+    for line in pr.lines:
+        if not line.item_id:
+            skipped.append(line.item_name)
+            continue
+        db.session.add(PurchaseOrderLine(
+            purchase_order_id=po.id,
+            item_id=line.item_id,
+            quantity_ordered=line.quantity_requested,
+            unit_cost=line.item.unit_cost if line.item else 0,
+        ))
+
+    pr.status = "Converted"
+    pr.purchase_order_id = po.id
+    db.session.commit()
+
+    if skipped:
+        flash(
+            f"{pr.pr_number} converted to {po.po_number}, but skipped (not yet in Inventory): "
+            f"{', '.join(skipped)}. Add them via Inventory, then add to this PO manually.",
+            "warning",
+        )
+    else:
+        flash(f"{pr.pr_number} converted to purchase order {po.po_number}.", "success")
+
+    return redirect(url_for("po_detail", po_id=po.id))
 
 # ---------------------------------------------------------------------------
 # Deliveries (always linked to a Purchase Order — po.status must be "Sent")
@@ -1157,7 +1846,7 @@ def po_cancel(po_id):
 
 @app.route("/purchase-orders/<int:po_id>/deliveries/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("admin", "supply_chain")
 def delivery_new(po_id):
     po = PurchaseOrder.query.get_or_404(po_id)
 
@@ -1212,15 +1901,14 @@ def delivery_new(po_id):
                 expiry_date=datetime.strptime(expiry_str, "%Y-%m-%d").date(),
                 quantity_received=qty,
                 quantity_remaining=qty,
-                location="Drug Store",
+                location="Supply Chain Store",
             )
             db.session.add(batch)
             db.session.flush()
 
             # same audit-trail helper used everywhere else in the app
-            log_movement(item, batch, "receipt", qty, to_location="Drug Store",
+            log_movement(item, batch, "receipt", qty, to_location="Supply Chain Store",
                          reference=f"{delivery.delivery_number} / {po.po_number}")
-
             # keep the PO line's received quantity in sync, same as po_receive()
             po_line = next((l for l in po.lines if l.item_id == item.id), None)
             if po_line:
@@ -1267,9 +1955,11 @@ def requisition_new():
     items = Item.query.order_by(Item.name).all()
 
     if request.method == "POST":
+        department_id = request.form["department_id"]
+
         req = Requisition(
             req_number=next_reference("S11", Requisition, "req_number"),
-            department_id=request.form["department_id"],
+            department_id=department_id,
             issue_point=request.form["issue_point"],
             requested_by_id=current_user.id,
             status="Pending",
@@ -1280,6 +1970,31 @@ def requisition_new():
         item_ids = request.form.getlist("item_id[]")
         quantities = request.form.getlist("quantity_required[]")
         remarks = request.form.getlist("remarks[]")
+
+        # ---- Validate each line against this department's own average
+        # monthly consumption of that item, before creating anything. ----
+        errors = []
+        for item_id, qty in zip(item_ids, quantities):
+            if not item_id or not qty:
+                continue
+            item = Item.query.get(item_id)
+            qty = float(qty)
+            avg = _department_avg_monthly_consumption(department_id, item_id)
+            if avg is not None:
+                cap = avg * Config.REQUISITION_MAX_MULTIPLIER
+                if qty > cap:
+                    errors.append(
+                        f"{item.name}: requested {qty:g}, but this department's average "
+                        f"monthly usage is {avg:.1f} (cap: {cap:.1f}). Reduce the quantity "
+                        f"or contact an admin if this is a genuine spike."
+                    )
+
+        if errors:
+            db.session.rollback()
+            for e in errors:
+                flash(e, "danger")
+            return render_template("requisitions/form.html", departments=departments, items=items,
+                                    locations=("Drug Store", "Holding"))
 
         for item_id, qty, remark in zip(item_ids, quantities, remarks):
             if not item_id or not qty:
@@ -1296,19 +2011,21 @@ def requisition_new():
     return render_template("requisitions/form.html", departments=departments, items=items,
                             locations=("Drug Store", "Holding"))
 
-
 @app.route("/requisitions/<int:req_id>")
 @login_required
 def requisition_detail(req_id):
     req = Requisition.query.get_or_404(req_id)
-    return render_template("requisitions/detail.html", req=req, currency=Config.CURRENCY)
-
+    can_action = _can_action_requisition(current_user, req)
+    return render_template("requisitions/detail.html", req=req, currency=Config.CURRENCY,
+                            can_action=can_action)
 
 @app.route("/requisitions/<int:req_id>/approve", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
 def requisition_approve(req_id):
     req = Requisition.query.get_or_404(req_id)
+    if not _can_action_requisition(current_user, req):
+        flash("You don't have permission to approve this requisition.", "danger")
+        return redirect(url_for("requisition_detail", req_id=req.id))
     if req.status != "Pending":
         flash("Only pending requisitions can be approved.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
@@ -1322,9 +2039,11 @@ def requisition_approve(req_id):
 
 @app.route("/requisitions/<int:req_id>/reject", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
 def requisition_reject(req_id):
     req = Requisition.query.get_or_404(req_id)
+    if not _can_action_requisition(current_user, req):
+        flash("You don't have permission to reject this requisition.", "danger")
+        return redirect(url_for("requisition_detail", req_id=req.id))
     if req.status != "Pending":
         flash("Only pending requisitions can be rejected.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
@@ -1338,10 +2057,12 @@ def requisition_reject(req_id):
 
 @app.route("/requisitions/<int:req_id>/issue", methods=["POST"])
 @login_required
-@role_required("admin", "store_officer")
 def requisition_issue(req_id):
     """Approved -> Issued. Deducts stock FEFO from the issue point and logs movements."""
     req = Requisition.query.get_or_404(req_id)
+    if not _can_action_requisition(current_user, req):
+        flash("You don't have permission to issue this requisition.", "danger")
+        return redirect(url_for("requisition_detail", req_id=req.id))
     if req.status != "Approved":
         flash("Only approved requisitions can be issued.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
@@ -1376,18 +2097,87 @@ def requisition_issue(req_id):
     db.session.commit()
     flash(f"{req.req_number} issued and stock deducted.", "success")
     return redirect(url_for("requisition_detail", req_id=req.id))
-
-
 @app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
 @login_required
+@role_required("pharmacist")
 def requisition_receive(req_id):
-    """Requesting department confirms receipt (closes the S11 approval chain)."""
+    """Confirms receipt of an issued requisition — only the pharmacy (the
+    dispensing point everything actually flows to) or admin can do this.
+    The drug store's job ends at issuing; it doesn't receive on the other
+    end."""
     req = Requisition.query.get_or_404(req_id)
     req.received_by_id = current_user.id
     db.session.commit()
     flash(f"Receipt of {req.req_number} confirmed.", "success")
     return redirect(url_for("requisition_detail", req_id=req.id))
-
+ 
+@app.route("/emergency-trolley")
+@login_required
+@role_required("admin", "store_officer", "pharmacist")
+def emergency_trolley_list():
+    """Everything currently issued onto the Emergency Trolley that hasn't
+    been fully returned yet, one row per requisition line."""
+    lines = (
+        RequisitionLine.query
+        .join(Requisition, RequisitionLine.requisition_id == Requisition.id)
+        .join(Department, Requisition.department_id == Department.id)
+        .filter(Department.name == "Emergency Trolley")
+        .filter(Requisition.status == "Issued")
+        .order_by(Requisition.created_at.desc())
+        .all()
+    )
+    outstanding_lines = [line for line in lines if line.quantity_outstanding > 0]
+ 
+    return render_template(
+        "emergency_trolley/list.html",
+        lines=outstanding_lines,
+        currency=Config.CURRENCY,
+        today=date.today().isoformat(),
+    )
+ 
+ 
+@app.route("/emergency-trolley/<int:line_id>/return", methods=["POST"])
+@login_required
+@role_required("admin", "store_officer", "pharmacist")
+def emergency_trolley_return(line_id):
+    line = RequisitionLine.query.get_or_404(line_id)
+    req = line.requisition
+ 
+    quantity = float(request.form.get("quantity", 0) or 0)
+    batch_number = request.form.get("batch_number", "").strip()
+    expiry_str = request.form.get("expiry_date", "")
+ 
+    if quantity <= 0 or quantity > line.quantity_outstanding:
+        flash("Invalid return quantity.", "danger")
+        return redirect(url_for("emergency_trolley_list"))
+ 
+    if not batch_number or not expiry_str:
+        flash("Batch number and expiry date are required.", "danger")
+        return redirect(url_for("emergency_trolley_list"))
+ 
+    destination = req.issue_point  # wherever this requisition was issued from
+ 
+    batch = Batch(
+        item_id=line.item_id,
+        batch_number=batch_number,
+        expiry_date=datetime.strptime(expiry_str, "%Y-%m-%d").date(),
+        quantity_received=quantity,
+        quantity_remaining=quantity,
+        location=destination,
+    )
+    db.session.add(batch)
+    db.session.flush()
+ 
+    log_movement(line.item, batch, "return", quantity,
+                 from_location="Emergency Trolley", to_location=destination,
+                 reference=f"TROLLEY-RETURN-{req.req_number}")
+ 
+    line.quantity_returned = float(line.quantity_returned or 0) + quantity
+    db.session.commit()
+ 
+    flash(f"Returned {quantity:g} units of {line.item.name} to {destination}.", "success")
+    return redirect(url_for("emergency_trolley_list"))
+ 
 
 # ---------------------------------------------------------------------------
 # Patients
@@ -1439,15 +2229,36 @@ def api_patient_search():
         for p in patients
     ])
 
+@app.route("/api/requisitions/item-stats")
+@login_required
+def api_requisition_item_stats():
+    """Live stats for the requisition form: this department's average
+    monthly usage of an item (from Issued requisition history) and the
+    actual max allowed quantity — same calculation requisition_new()
+    enforces at submit time, so this preview can never disagree with it."""
+    item_id = request.args.get("item_id", type=int)
+    department_id = request.args.get("department_id", type=int)
+
+    if not item_id:
+        return jsonify({"error": "item_id is required"}), 400
+
+    avg = _department_avg_monthly_consumption(department_id, item_id) if department_id else None
+    max_allowed = round(avg * Config.REQUISITION_MAX_MULTIPLIER, 2) if avg is not None else None
+
+    return jsonify({
+        "avg": round(avg, 2) if avg is not None else None,
+        "max_allowed": max_allowed,
+    })
 
 @app.route("/patients/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "store_officer")
+@role_required("registry")
 def patient_new():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         ip_op_number = request.form.get("ip_op_number", "").strip()
         patient_type = request.form.get("patient_type", "Outpatient")
+        confirm_duplicate = request.form.get("confirm_duplicate") == "1"
 
         if not name or not ip_op_number:
             flash("Patient name and IP/OP number are required.", "danger")
@@ -1456,6 +2267,19 @@ def patient_new():
         if Patient.query.filter_by(ip_op_number=ip_op_number).first():
             flash("A patient with that IP/OP number is already registered.", "danger")
             return render_template("patients/form.html", patient=None)
+
+        # Master patient index check: same name (case-insensitive) already
+        # registered under a different number. Not blocked -- just a
+        # warning registry must explicitly confirm past, to catch
+        # accidental double-registration of the same person.
+        if not confirm_duplicate:
+            possible_matches = Patient.query.filter(Patient.name.ilike(name)).all()
+            if possible_matches:
+                return render_template(
+                    "patients/form.html", patient=None,
+                    possible_matches=possible_matches,
+                    pending_form=request.form,
+                )
 
         patient = Patient(
             name=name,
@@ -1470,12 +2294,22 @@ def patient_new():
             drug_allergies=request.form.get("drug_allergies") or None,
         )
         db.session.add(patient)
+        db.session.flush()
+
+        # A new inpatient registration is itself an admission event.
+        if patient_type == "Inpatient":
+            db.session.add(PatientMovement(
+                patient_id=patient.id,
+                movement_type="Admission",
+                ward_unit=patient.clinic_ward_unit,
+                recorded_by_id=current_user.id,
+            ))
+
         db.session.commit()
         flash(f"Patient {patient.name} registered.", "success")
         return redirect(url_for("patient_detail", patient_id=patient.id))
 
     return render_template("patients/form.html", patient=None)
-
 @app.route("/patients/<int:patient_id>")
 @login_required
 def patient_detail(patient_id):
@@ -1485,8 +2319,247 @@ def patient_detail(patient_id):
         .order_by(Prescription.date.desc(), Prescription.id.desc())
         .all()
     )
-    return render_template("patients/detail.html", patient=patient, prescriptions=prescriptions)
+    notes = (
+        PatientNote.query.filter_by(patient_id=patient.id)
+        .order_by(PatientNote.created_at.desc())
+        .all()
+    )
+    movements = (
+        PatientMovement.query.filter_by(patient_id=patient.id)
+        .order_by(PatientMovement.created_at.desc())
+        .all()
+    )
+    documents = (
+        PatientDocument.query.filter_by(patient_id=patient.id)
+        .order_by(PatientDocument.uploaded_at.desc())
+        .all()
+    )
+    appointments = (
+        Appointment.query.filter_by(patient_id=patient.id)
+        .order_by(Appointment.scheduled_date.desc())
+        .all()
+    )
+    return render_template(
+        "patients/detail.html", patient=patient,
+        prescriptions=prescriptions, notes=notes,
+        movements=movements, documents=documents,
+        appointments=appointments,
+    )
 
+
+@app.route("/patients/<int:patient_id>/notes", methods=["POST"])
+@login_required
+@role_required("admin", "doctor")
+def patient_note_add(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    text = request.form.get("note", "").strip()
+
+    if not text:
+        flash("Note text is required.", "danger")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    note = PatientNote(patient_id=patient.id, author_id=current_user.id, note=text)
+    db.session.add(note)
+    db.session.commit()
+
+    flash("Note added.", "success")
+    return redirect(url_for("patient_detail", patient_id=patient.id))
+
+# ---------------------------------------------------------------------------
+# Patient movements (admission / transfer / discharge log — registry)
+# ---------------------------------------------------------------------------
+
+@app.route("/patients/<int:patient_id>/movements", methods=["POST"])
+@login_required
+@role_required("registry")
+def patient_movement_add(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    movement_type = request.form.get("movement_type", "")
+    ward_unit = request.form.get("ward_unit", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    if movement_type not in PatientMovement.MOVEMENT_TYPES:
+        flash("Invalid movement type.", "danger")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    db.session.add(PatientMovement(
+        patient_id=patient.id,
+        movement_type=movement_type,
+        ward_unit=ward_unit or None,
+        notes=notes or None,
+        recorded_by_id=current_user.id,
+    ))
+
+    # Keep patient_type / clinic_ward_unit in sync with the latest movement.
+    if movement_type == "Admission":
+        patient.patient_type = "Inpatient"
+        if ward_unit:
+            patient.clinic_ward_unit = ward_unit
+    elif movement_type == "Transfer" and ward_unit:
+        patient.clinic_ward_unit = ward_unit
+    elif movement_type == "Discharge":
+        patient.patient_type = "Outpatient"
+
+    db.session.commit()
+    flash(f"{movement_type} recorded for {patient.name}.", "success")
+    return redirect(url_for("patient_detail", patient_id=patient.id))
+
+
+# ---------------------------------------------------------------------------
+# Patient file tracking (registry)
+# ---------------------------------------------------------------------------
+
+@app.route("/patients/<int:patient_id>/file", methods=["POST"])
+@login_required
+@role_required("registry")
+def patient_file_update(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    file_record = patient.file_record
+
+    if not file_record:
+        file_record = PatientFile(patient_id=patient.id)
+        db.session.add(file_record)
+
+    action = request.form.get("action")
+
+    if action == "set_file_number":
+        file_number = request.form.get("file_number", "").strip()
+        if file_number and PatientFile.query.filter(
+            PatientFile.file_number == file_number,
+            PatientFile.patient_id != patient.id,
+        ).first():
+            flash("That file number is already assigned to another patient.", "danger")
+            return redirect(url_for("patient_detail", patient_id=patient.id))
+        file_record.file_number = file_number or None
+
+    elif action == "toggle_scanned":
+        file_record.digital_scanned = not file_record.digital_scanned
+
+    elif action == "check_out":
+        file_record.checked_out_to_id = current_user.id
+        file_record.checked_out_at = datetime.utcnow()
+
+    elif action == "check_in":
+        file_record.checked_out_to_id = None
+        file_record.checked_out_at = None
+
+    db.session.commit()
+    flash("File record updated.", "success")
+    return redirect(url_for("patient_detail", patient_id=patient.id))
+
+ALLOWED_DOCUMENT_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "doc", "docx"}
+
+
+def _allowed_document_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_DOCUMENT_EXTENSIONS
+
+
+def _patient_documents_dir():
+    upload_dir = os.path.join(app.root_path, "uploads", "patient_documents")
+    os.makedirs(upload_dir, exist_ok=True)
+    return upload_dir
+
+
+@app.route("/patients/<int:patient_id>/documents", methods=["POST"])
+@login_required
+@role_required("registry")
+def patient_document_upload(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    file = request.files.get("document")
+    description = request.form.get("description", "").strip()
+
+    if not file or file.filename == "":
+        flash("Please choose a file to upload.", "danger")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    if not _allowed_document_file(file.filename):
+        flash("Unsupported file type. Allowed: PDF, PNG, JPG, DOC, DOCX.", "danger")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    original_filename = secure_filename(file.filename)
+    ext = original_filename.rsplit(".", 1)[1].lower()
+    stored_filename = f"{uuid.uuid4().hex}.{ext}"
+
+    file.save(os.path.join(_patient_documents_dir(), stored_filename))
+
+    doc = PatientDocument(
+        patient_id=patient.id,
+        uploaded_by_id=current_user.id,
+        original_filename=original_filename,
+        stored_filename=stored_filename,
+        description=description or None,
+    )
+    db.session.add(doc)
+    db.session.commit()
+
+    flash("Document uploaded.", "success")
+    return redirect(url_for("patient_detail", patient_id=patient.id))
+
+
+@app.route("/patients/documents/<int:document_id>/download")
+@login_required
+def patient_document_download(document_id):
+    doc = PatientDocument.query.get_or_404(document_id)
+    return send_from_directory(
+        _patient_documents_dir(), doc.stored_filename,
+        as_attachment=True, download_name=doc.original_filename,
+    )
+
+# ---------------------------------------------------------------------------
+# Appointments (registry)
+# ---------------------------------------------------------------------------
+
+@app.route("/appointments")
+@login_required
+def appointment_list():
+    status = request.args.get("status")
+    query = Appointment.query
+    if status:
+        query = query.filter_by(status=status)
+    appointments = query.order_by(Appointment.scheduled_date.asc()).all()
+    return render_template("appointments/list.html", appointments=appointments, status=status)
+
+
+@app.route("/patients/<int:patient_id>/appointments/new", methods=["POST"])
+@login_required
+@role_required("registry")
+def appointment_new(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    scheduled_date_str = request.form.get("scheduled_date", "")
+
+    if not scheduled_date_str:
+        flash("Appointment date is required.", "danger")
+        return redirect(url_for("patient_detail", patient_id=patient.id))
+
+    appointment = Appointment(
+        patient_id=patient.id,
+        clinic_ward_unit=request.form.get("clinic_ward_unit") or None,
+        scheduled_date=datetime.strptime(scheduled_date_str, "%Y-%m-%d").date(),
+        scheduled_time=request.form.get("scheduled_time") or None,
+        reason=request.form.get("reason") or None,
+        created_by_id=current_user.id,
+    )
+    db.session.add(appointment)
+    db.session.commit()
+    flash(f"Appointment scheduled for {patient.name} on {appointment.scheduled_date}.", "success")
+    return redirect(url_for("patient_detail", patient_id=patient.id))
+
+
+@app.route("/appointments/<int:appointment_id>/status", methods=["POST"])
+@login_required
+@role_required("registry")
+def appointment_status_update(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    new_status = request.form.get("status", "")
+
+    if new_status not in Appointment.STATUSES:
+        flash("Invalid status.", "danger")
+        return redirect(url_for("appointment_list"))
+
+    appointment.status = new_status
+    db.session.commit()
+    flash(f"Appointment marked {new_status}.", "success")
+    return redirect(request.referrer or url_for("appointment_list"))
 
 # ---------------------------------------------------------------------------
 # Prescribers (typeahead used by the outpatient/inpatient dispense forms)
@@ -1636,7 +2709,7 @@ def prescriber_edit(prescriber_id):
 @login_required
 @role_required("admin", "doctor")
 def prescription_new():
-    items = Item.query.order_by(Item.name).all()
+    items = _prescribable_items()
 
     # The logged-in doctor's own Prescriber record — powers the Registration
     # Number / Designation display in the footer, and is created on first
@@ -1763,14 +2836,22 @@ def prescriptions_mine():
 @role_required("admin", "pharmacist")
 def prescriptions_pending():
     """The pharmacist's queue of doctor-written prescriptions waiting to be
-    dispensed (fully or partially)."""
-    prescriptions = (
-        Prescription.query.filter(Prescription.status.in_(["Pending", "Partially Dispensed"]))
-        .order_by(Prescription.date.asc(), Prescription.id.asc())
-        .all()
-    )
-    return render_template("prescriptions/pending.html", prescriptions=prescriptions)
+    dispensed. Scoped to only the patient type(s) this pharmacist's
+    assigned pharmacy point actually handles."""
+    query = Prescription.query.filter(Prescription.status.in_(["Pending", "Partially Dispensed"]))
 
+    if current_user.role == "pharmacist":
+        scope = _pharmacist_scope_locations(current_user)
+        allowed_types = []
+        if "Outpatient Pharmacy" in scope:
+            allowed_types.append("Outpatient")
+        if "Inpatient Pharmacy" in scope:
+            allowed_types.append("Inpatient")
+        if len(allowed_types) == 1:
+            query = query.join(Patient).filter(Patient.patient_type == allowed_types[0])
+
+    prescriptions = query.order_by(Prescription.date.asc(), Prescription.id.asc()).all()
+    return render_template("prescriptions/pending.html", prescriptions=prescriptions)
 
 @app.route("/prescriptions/<int:prescription_id>")
 @login_required
@@ -1800,6 +2881,10 @@ def prescription_dispense(prescription_id):
         "Outpatient Pharmacy" if prescription.patient.patient_type == "Outpatient"
         else "Inpatient Pharmacy"
     )
+
+    if current_user.role == "pharmacist" and location not in _pharmacist_scope_locations(current_user):
+        flash(f"You're assigned to a different pharmacy point and can't dispense {location} prescriptions.", "danger")
+        return redirect(url_for("prescriptions_pending"))
 
     if request.method == "POST":
         any_dispensed = False
@@ -1874,6 +2959,9 @@ def outpatient_list():
 @login_required
 @role_required("admin", "pharmacist")
 def outpatient_dispense():
+    if current_user.role == "pharmacist" and "Outpatient Pharmacy" not in _pharmacist_scope_locations(current_user):
+        flash("You're not assigned to Outpatient Pharmacy.", "danger")
+        return redirect(url_for("dashboard"))
     items = Item.query.order_by(Item.name).all()
 
     if request.method == "POST":
@@ -2006,6 +3094,9 @@ def inpatient_list():
 @login_required
 @role_required("admin", "pharmacist")
 def inpatient_dispense():
+    if current_user.role == "pharmacist" and "Inpatient Pharmacy" not in _pharmacist_scope_locations(current_user):
+        flash("You're not assigned to Inpatient Pharmacy.", "danger")
+        return redirect(url_for("dashboard"))
     items = Item.query.order_by(Item.name).all()
 
     if request.method == "POST":
@@ -2104,6 +3195,9 @@ def inpatient_dispense():
 @login_required
 @role_required("admin", "pharmacist")
 def discharge(patient_id):
+    if current_user.role == "pharmacist" and "Inpatient Pharmacy" not in _pharmacist_scope_locations(current_user):
+        flash("You're not assigned to Inpatient Pharmacy.", "danger")
+        return redirect(url_for("dashboard"))
     """
     Checks the patient's last prescription against what was issued today.
     - Fully depleted  -> continuation prescription for take-home medicine.
@@ -2296,25 +3390,31 @@ def reports_index():
 @app.route("/reports/inventory-valuation.csv")
 @login_required
 def report_inventory_valuation():
-    rows = [
-        (i.sku, i.name, i.quantity_on_hand, i.unit_cost,
-         i.quantity_on_hand * i.unit_cost)
-        for i in Item.query.all()
-    ]
+    scope_locations = _current_scope_locations()
+    rows = []
+    for i in Item.query.all():
+        qty = _scoped_quantity(i, scope_locations)
+        rows.append((i.sku, i.name, qty, i.unit_cost, float(qty) * float(i.unit_cost or 0)))
     return _csv_response(
         "inventory_valuation.csv",
         ["SKU", "Name", "Qty on Hand", "Unit Cost (KES)", "Total Value (KES)"],
         rows,
     )
 
-
 @app.route("/reports/stock-movements.csv")
 @login_required
 def report_stock_movements():
+    scope_locations = _current_scope_locations()
+    query = StockMovement.query
+    if scope_locations:
+        query = query.filter(
+            (StockMovement.from_location.in_(scope_locations))
+            | (StockMovement.to_location.in_(scope_locations))
+        )
     rows = [
         (m.created_at.strftime("%Y-%m-%d %H:%M"), m.item.name, m.movement_type,
          m.quantity, m.from_location, m.to_location, m.reference)
-        for m in StockMovement.query.order_by(StockMovement.created_at).all()
+        for m in query.order_by(StockMovement.created_at).all()
     ]
     return _csv_response(
         "stock_movements.csv",
@@ -2355,16 +3455,19 @@ def report_requisitions():
 @app.route("/reports/expiry.csv")
 @login_required
 def report_expiry():
+    scope_locations = _current_scope_locations()
+    query = Batch.query.filter(Batch.quantity_remaining > 0)
+    if scope_locations:
+        query = query.filter(Batch.location.in_(scope_locations))
     rows = [
         (b.item.name, b.batch_number, b.location, b.expiry_date, b.quantity_remaining)
-        for b in Batch.query.filter(Batch.quantity_remaining > 0).all()
+        for b in query.all()
     ]
     return _csv_response(
         "expiry_report.csv",
         ["Item", "Batch Number", "Location", "Expiry Date", "Qty Remaining"],
         rows,
     )
-
 
 @app.route("/reports/discharge-refunds.csv")
 @login_required
@@ -2397,14 +3500,15 @@ def report_discharge_refunds():
 # instead of the MOVEMENT_VALUE_SIGN lookup.
 # ---------------------------------------------------------------------------
 
+
 MOVEMENT_VALUE_SIGN = {
     "receipt": 1,
     "refund_reversal": 1,
+    "return": 1,
     "issue": -1,
     "transfer": 0,
     "adjustment": 0,
 }
-
 
 @app.route("/reports/analytics")
 @login_required
@@ -2488,18 +3592,26 @@ def api_procurement_vs_consumption():
 def api_expiry_timeline():
     """Quantity remaining grouped by expiry month, split into 'within the
     6-month alert window' vs. 'later', for the next `months_ahead` months.
-    """
+    Optional ?locations=A,B,C scopes to specific locations."""
     months_ahead = request.args.get("months_ahead", 12, type=int)
+    locations_param = request.args.get("locations", "").strip()
+    locations = (
+        [loc.strip() for loc in locations_param.split(",") if loc.strip()]
+        if locations_param else None
+    )
+
     today = date.today()
     horizon = today + relativedelta(months=months_ahead)
     alert_cutoff = today + relativedelta(months=Config.EXPIRY_ALERT_MONTHS)
 
-    batches = (
+    query = (
         Batch.query.filter(Batch.quantity_remaining > 0)
         .filter(Batch.expiry_date <= horizon)
-        .order_by(Batch.expiry_date.asc())
-        .all()
     )
+    if locations:
+        query = query.filter(Batch.location.in_(locations))
+
+    batches = query.order_by(Batch.expiry_date.asc()).all()
 
     buckets = {}
     for b in batches:
@@ -2518,20 +3630,84 @@ def api_expiry_timeline():
     })
 
 
+@app.route("/reports/api/fill-rate")
+@login_required
+@role_required("admin", "pharmacist")
+def api_fill_rate():
+    """Prescription fill rate: what share of prescribed quantity was
+    actually dispensed, i.e. sum(quantity_dispensed) / sum(quantity_prescribed)
+    across PrescriptionLine records. A shortfall usually means the pharmacy
+    ran out of stock or the patient only picked up part of the order.
+
+    Returns a monthly trend for the last `months` months (default 6) plus
+    an overall rate across that whole window for the KPI number."""
+    months = request.args.get("months", 6, type=int)
+    start_date = date.today().replace(day=1) - relativedelta(months=months - 1)
+
+    lines = (
+        db.session.query(
+            PrescriptionLine.quantity_prescribed,
+            PrescriptionLine.quantity_dispensed,
+            Prescription.date,
+        )
+        .join(Prescription, Prescription.id == PrescriptionLine.prescription_id)
+        .filter(Prescription.date >= start_date)
+        .all()
+    )
+
+    monthly_prescribed = {}
+    monthly_dispensed = {}
+    for prescribed, dispensed, rx_date in lines:
+        month_key = rx_date.strftime("%Y-%m")
+        monthly_prescribed[month_key] = monthly_prescribed.get(month_key, 0) + float(prescribed or 0)
+        monthly_dispensed[month_key] = monthly_dispensed.get(month_key, 0) + float(dispensed or 0)
+
+    ordered_keys = sorted(monthly_prescribed.keys())
+    labels = [datetime.strptime(k, "%Y-%m").strftime("%b %Y") for k in ordered_keys]
+
+    rates = []
+    for k in ordered_keys:
+        prescribed_total = monthly_prescribed[k]
+        dispensed_total = monthly_dispensed.get(k, 0)
+        rate = round((dispensed_total / prescribed_total) * 100, 1) if prescribed_total else 0.0
+        rates.append(rate)
+
+    total_prescribed = sum(monthly_prescribed.values())
+    total_dispensed = sum(monthly_dispensed.values())
+    overall_rate = round((total_dispensed / total_prescribed) * 100, 1) if total_prescribed else 0.0
+
+    return jsonify({
+        "labels": labels,
+        "values": rates,
+        "overall_rate": overall_rate,
+    })
+
+
 @app.route("/reports/api/stock-by-location")
 @login_required
 def api_stock_by_location():
-    """Current stock value split across Drug Store / Holding / Pharmacy points."""
-    rows = (
+    """Current stock value split across Drug Store / Holding / Pharmacy points.
+    Optional ?locations=Drug Store,Holding scopes the breakdown to specific
+    locations — used by the store_officer / pharmacist dashboard charts so
+    each role only sees the locations relevant to their work."""
+    locations_param = request.args.get("locations", "").strip()
+    locations = (
+        [loc.strip() for loc in locations_param.split(",") if loc.strip()]
+        if locations_param else None
+    )
+
+    query = (
         db.session.query(
             Batch.location,
             func.sum(Batch.quantity_remaining * Item.unit_cost).label("value"),
         )
         .join(Item, Item.id == Batch.item_id)
         .filter(Batch.quantity_remaining > 0)
-        .group_by(Batch.location)
-        .all()
     )
+    if locations:
+        query = query.filter(Batch.location.in_(locations))
+
+    rows = query.group_by(Batch.location).all()
 
     return jsonify({
         "labels": [r.location for r in rows],

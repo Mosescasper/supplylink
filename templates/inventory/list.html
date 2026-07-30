@@ -10,6 +10,12 @@
 
 {% block content %}
 
+{% if scope_locations %}
+<p class="form-hint" style="margin-bottom:16px;">
+  Showing quantities for: <strong>{{ scope_locations | join(', ') }}</strong> only.
+</p>
+{% endif %}
+
 <form method="get" class="card" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px;">
   <div style="flex:2; min-width:200px; margin-bottom:0;">
     <label for="q">Search</label>
@@ -67,11 +73,11 @@
         <td>{{ item.supplier.name if item.supplier else '&mdash;' }}</td>
         <td>{{ item.unit_of_issue }}</td>
         <td class="num">{{ currency }} {{ "{:,.2f}".format(item.unit_cost) }}</td>
-        <td class="num">{{ item.quantity_on_hand|int }}</td>
+        <td class="num">{{ item.scoped_quantity|int }}</td>
         <td class="num">{{ item.reorder_level|int }}</td>
         <td class="num">{{ "{:,.1f}".format(item.avg_monthly_consumption) if item.avg_monthly_consumption else '&mdash;' }}</td>
         <td>
-          {% if item.quantity_on_hand <= item.reorder_level %}
+          {% if item.scoped_is_low %}
           <span class="badge badge-danger">LOW STOCK</span>
           {% else %}
           <span class="badge badge-success">OK</span>

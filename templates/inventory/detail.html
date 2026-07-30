@@ -51,8 +51,8 @@
             <tr>
                 <th>Quantity on Hand</th>
                 <td>
-                    {{ item.quantity_on_hand }}
-                    {% if item.is_low_stock %}
+                    {{ scoped_quantity }}
+                    {% if scoped_quantity <= (item.reorder_level or 0) %}
                     <span class="badge badge-warning">Low Stock</span>
                     {% endif %}
                 </td>
@@ -72,7 +72,6 @@
             </tr>
         </thead>
         <tbody>
-            {% set by_location = item.quantity_on_hand_by_location %}
             {% for location, qty in by_location.items() %}
             <tr>
                 <td>{{ location }}</td>
@@ -106,7 +105,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for batch in item.batches | sort(attribute="expiry_date") %}
+            {% for batch in visible_batches | sort(attribute="expiry_date") %}
             <tr>
                 <td>{{ batch.batch_number }}</td>
                 <td>{{ batch.location }}</td>

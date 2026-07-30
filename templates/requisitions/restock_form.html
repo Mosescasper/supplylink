@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Restock Requisition{% endblock %}
+{% block page_title %}Restock Requisition — {{ source }} → {{ destination }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="form-hint">This requisition draws stock from <strong>{{ source }}</strong> and, once issued, moves it into <strong>{{ destination }}</strong>.</p>
+  <form method="POST">
+    <div id="lines-wrap">
+      <div class="pr-line form-row" style="align-items:flex-end;">
+        <div class="form-group">
+          <label>Item</label>
+          <select name="item_id[]" class="form-control" required>
+            <option value="">Select item</option>
+            {% for item in items %}
+            <option value="{{ item.id }}">{{ item.name }} ({{ item.sku }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" step="0.01" name="quantity_required[]" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Remarks (optional)</label>
+          <input type="text" name="remarks[]" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="btn" id="add-line-btn">+ Add Another Item</button>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Submit Requisition</button>
+      <a href="{{ url_for('requisition_list') }}" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById('add-line-btn').addEventListener('click', function () {
+  const wrap = document.getElementById('lines-wrap');
+  const clone = wrap.firstElementChild.cloneNode(true);
+  clone.querySelectorAll('input').forEach(i => i.value = '');
+  clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  wrap.appendChild(clone);
+});
+</script>
+{% endblock %}

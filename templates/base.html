@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}SupplyLink{% endblock %}</title>
+<title>{% block title %}Afya Link{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -38,6 +38,7 @@
     border-right:1px solid var(--border-subtle);
     padding:1.5rem 1rem; display:flex; flex-direction:column;
     position:fixed; top:0; bottom:0; left:0;
+    overflow-y:auto;
   }
   .brand{display:flex; align-items:center; gap:.65rem; margin-bottom:2.25rem; padding:0 .35rem;}
   .brand-icon{
@@ -253,15 +254,20 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-icon">💊</div>
-      <div class="brand-name">SupplyLink</div>
+      <div class="brand-name">Afya Link</div>
     </div>
     <nav class="nav-group">
-     <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}"><span class="ic">📊</span> Dashboard</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}"><span class="ic">📊</span> Dashboard</a>
 
-      {% if current_user.role in ['admin', 'store_officer'] %}
+      {% if current_user.role in ['admin', 'supply_chain'] %}
       <a class="nav-link {{ 'active' if request.endpoint and 'inventory' in request.endpoint }}" href="{{ url_for('inventory_list') }}"><span class="ic">📁</span> Inventory</a>
       <a class="nav-link {{ 'active' if request.endpoint and 'supplier' in request.endpoint }}" href="{{ url_for('supplier_list') }}"><span class="ic">🚚</span> Suppliers</a>
       <a class="nav-link {{ 'active' if request.endpoint and ('procurement' in request.endpoint or 'po_' in request.endpoint) }}" href="{{ url_for('procurement_plan_list') }}"><span class="ic">📅</span> Procurement</a>
+      <a class="nav-link {{ 'active' if request.endpoint and 'po_' in request.endpoint }}" href="{{ url_for('po_list') }}"><span class="ic">📦</span> Purchase Orders</a>
+      {% endif %}
+
+      {% if current_user.role == 'store_officer' %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'inventory' in request.endpoint }}" href="{{ url_for('inventory_list') }}"><span class="ic">📁</span> Drug Store Inventory</a>
       {% endif %}
 
       {% if current_user.role == 'doctor' %}
@@ -270,14 +276,28 @@
       <a class="nav-link {{ 'active' if request.endpoint == 'prescriptions_mine' }}" href="{{ url_for('prescriptions_mine') }}"><span class="ic">📜</span> My Prescriptions</a>
       {% endif %}
 
-      <a class="nav-link {{ 'active' if request.endpoint and 'requisition' in request.endpoint }}" href="{{ url_for('requisition_list') }}"><span class="ic">📋</span> Requisitions</a>
-
-      {% if current_user.role in ['admin', 'pharmacist'] %}
-      <a class="nav-link {{ 'active' if request.endpoint and 'outpatient' in request.endpoint }}" href="{{ url_for('outpatient_list') }}"><span class="ic">💊</span> Outpatient Pharmacy</a>
-      <a class="nav-link {{ 'active' if request.endpoint and ('inpatient' in request.endpoint or request.endpoint == 'discharge') }}" href="{{ url_for('inpatient_list') }}"><span class="ic">🛏️</span> Inpatient Pharmacy</a>
+      {% if current_user.role == 'registry' %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'patient' in request.endpoint }}" href="{{ url_for('patient_list') }}"><span class="ic">🗂️</span> Patients</a>
       {% endif %}
 
+      <a class="nav-link {{ 'active' if request.endpoint == 'requisition_list' or (request.endpoint and request.endpoint.startswith('requisition_')) }}" href="{{ url_for('requisition_list') }}"><span class="ic">📋</span> Store Requisitions</a>
+      <a class="nav-link {{ 'active' if request.endpoint and 'purchase_requisition' in request.endpoint }}" href="{{ url_for('purchase_requisition_list') }}"><span class="ic">🛍️</span> Purchase Requests</a>
+
+      {% if current_user.role in ['admin', 'store_officer', 'pharmacist'] %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'emergency_trolley' in request.endpoint }}" href="{{ url_for('emergency_trolley_list') }}"><span class="ic">🚑</span> Emergency Trolley</a>
+      {% endif %}
+
+      {% if current_user.role == 'admin' or (current_user.role == 'pharmacist' and (not pharmacist_scope or 'Outpatient Pharmacy' in pharmacist_scope)) %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'outpatient' in request.endpoint }}" href="{{ url_for('outpatient_list') }}"><span class="ic">💊</span> Outpatient Pharmacy</a>
+      {% endif %}
+      {% if current_user.role == 'admin' or (current_user.role == 'pharmacist' and (not pharmacist_scope or 'Inpatient Pharmacy' in pharmacist_scope)) %}
+      <a class="nav-link {{ 'active' if request.endpoint and ('inpatient' in request.endpoint or request.endpoint == 'discharge') }}" href="{{ url_for('inpatient_list') }}"><span class="ic">🛏️</span> Inpatient Pharmacy</a>
+      {% endif %}
       <a class="nav-link {{ 'active' if request.endpoint and 'report' in request.endpoint }}" href="{{ url_for('reports_index') }}"><span class="ic">✅</span> Reports</a>
+
+      {% if current_user.role == 'admin' %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'user_' in request.endpoint }}" href="{{ url_for('user_list') }}"><span class="ic">👤</span> Users</a>
+      {% endif %}
     </nav>
     <div class="sidebar-footer">
       <div class="user-chip">

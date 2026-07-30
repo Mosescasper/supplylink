@@ -18,6 +18,9 @@ class Config:
     # Business rules
     EXPIRY_ALERT_MONTHS = 6          # FEFO alert window
     LOW_STOCK_ALERT = True
+    REQUISITION_SLA_HOURS = 48
+    REQUISITION_MAX_MULTIPLIER = 1.5   # can't request more than 1.5x this dept's avg monthly usage of an item
+    REQUISITION_CONSUMPTION_MONTHS = 3  # lookback window used to calculate that average
 
     # Currency / locale
     CURRENCY = "KES"

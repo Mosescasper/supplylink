@@ -77,6 +77,215 @@
         <p class="empty-hint">No prescriptions yet for this patient.</p>
         {% endif %}
     </div>
+
+    <div class="card">
+        <h3 class="card-heading">Clinical Notes</h3>
+
+        {% if current_user.role in ('admin', 'doctor') %}
+        <form method="POST" action="{{ url_for('patient_note_add', patient_id=patient.id) }}" class="note-form">
+            <textarea name="note" class="note-input" rows="3" placeholder="Add a note..." required></textarea>
+            <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+        </form>
+        {% endif %}
+
+        {% if notes %}
+        <ul class="note-list">
+            {% for n in notes %}
+            <li class="note-item">
+                <div class="note-meta">{{ n.author.name }} · {{ n.created_at.strftime("%d %b %Y, %H:%M") }}</div>
+                <div class="note-text">{{ n.note }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-hint">No notes yet for this patient.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-heading">Admission / Transfer / Discharge Log</h3>
+
+        {% if current_user.role in ('admin', 'registry') %}
+        <form method="POST" action="{{ url_for('patient_movement_add', patient_id=patient.id) }}" class="movement-form">
+            <select name="movement_type" class="note-input" required style="margin-bottom:.5rem;">
+                <option value="" disabled selected>Movement type…</option>
+                <option value="Admission">Admission</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Discharge">Discharge</option>
+            </select>
+            <input type="text" name="ward_unit" class="note-input" placeholder="Ward / unit (optional)" style="margin-bottom:.5rem;">
+            <input type="text" name="notes" class="note-input" placeholder="Notes (optional)" style="margin-bottom:.5rem;">
+            <button type="submit" class="btn btn-primary btn-sm">Log Movement</button>
+        </form>
+        {% endif %}
+
+        {% if movements %}
+        <ul class="note-list">
+            {% for m in movements %}
+            <li class="note-item">
+                <div class="note-meta">
+                    <span class="badge badge-pending">{{ m.movement_type }}</span>
+                    {{ m.ward_unit or "" }} · {{ m.recorded_by.name if m.recorded_by else "—" }} · {{ m.created_at.strftime("%d %b %Y, %H:%M") }}
+                </div>
+                {% if m.notes %}<div class="note-text">{{ m.notes }}</div>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-hint">No movements logged yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-heading">Patient File</h3>
+
+        {% set file_record = patient.file_record %}
+        <table class="kv-table">
+            <tr><th>File Number</th><td>{{ file_record.file_number if file_record and file_record.file_number else "— not assigned —" }}</td></tr>
+            <tr><th>Digitally Scanned</th>
+                <td>
+                    {% if file_record and file_record.digital_scanned %}
+                    <span class="badge badge-success">Yes</span>
+                    {% else %}
+                    <span class="badge badge-pending">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr><th>Checked Out To</th>
+                <td>
+                    {% if file_record and file_record.checked_out_to %}
+                    {{ file_record.checked_out_to.name }} · {{ file_record.checked_out_at.strftime("%d %b %Y, %H:%M") }}
+                    {% else %}
+                    — in registry —
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+
+        {% if current_user.role in ('admin', 'registry') %}
+        <div class="file-actions">
+            <form method="POST" action="{{ url_for('patient_file_update', patient_id=patient.id) }}" class="file-number-form">
+                <input type="hidden" name="action" value="set_file_number">
+                <input type="text" name="file_number" class="note-input" placeholder="File number"
+                       value="{{ file_record.file_number if file_record else '' }}" style="margin-bottom:0;">
+                <button type="submit" class="btn btn-sm btn-outline">Save</button>
+            </form>
+
+            <form method="POST" action="{{ url_for('patient_file_update', patient_id=patient.id) }}">
+                <input type="hidden" name="action" value="toggle_scanned">
+                <button type="submit" class="btn btn-sm btn-outline">
+                    {{ "Mark Not Scanned" if file_record and file_record.digital_scanned else "Mark Scanned" }}
+                </button>
+            </form>
+
+            {% if file_record and file_record.checked_out_to %}
+            <form method="POST" action="{{ url_for('patient_file_update', patient_id=patient.id) }}">
+                <input type="hidden" name="action" value="check_in">
+                <button type="submit" class="btn btn-sm btn-primary">Check In</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('patient_file_update', patient_id=patient.id) }}">
+                <input type="hidden" name="action" value="check_out">
+                <button type="submit" class="btn btn-sm btn-primary">Check Out To Me</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-heading">Documents</h3>
+
+        {% if current_user.role in ('admin', 'registry') %}
+        <form method="POST" action="{{ url_for('patient_document_upload', patient_id=patient.id) }}"
+              enctype="multipart/form-data" class="document-form">
+            <input type="file" name="document" required style="margin-bottom:.5rem;">
+            <input type="text" name="description" class="note-input" placeholder="Description (optional)" style="margin-bottom:.5rem;">
+            <button type="submit" class="btn btn-primary btn-sm">Upload Document</button>
+        </form>
+        {% endif %}
+
+        {% if documents %}
+        <table class="table">
+            <thead>
+                <tr><th>File</th><th>Description</th><th>Uploaded By</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for d in documents %}
+                <tr>
+                    <td><a href="{{ url_for('patient_document_download', document_id=d.id) }}">{{ d.original_filename }}</a></td>
+                    <td>{{ d.description or "—" }}</td>
+                    <td>{{ d.uploaded_by.name }}</td>
+                    <td>{{ d.uploaded_at.strftime("%d %b %Y") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-hint">No documents uploaded yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-heading">Appointments</h3>
+
+        {% if current_user.role in ('admin', 'registry') %}
+        <form method="POST" action="{{ url_for('appointment_new', patient_id=patient.id) }}" class="appointment-form">
+            <div class="form-row" style="display:flex; gap:.5rem;">
+                <input type="date" name="scheduled_date" class="note-input" required>
+                <input type="text" name="scheduled_time" class="note-input" placeholder="Time, e.g. 10:30 AM">
+            </div>
+            <input type="text" name="clinic_ward_unit" class="note-input" placeholder="Clinic / ward" style="margin:.5rem 0;">
+            <input type="text" name="reason" class="note-input" placeholder="Reason for visit" style="margin-bottom:.5rem;">
+            <button type="submit" class="btn btn-primary btn-sm">Schedule Appointment</button>
+        </form>
+        {% endif %}
+
+        {% if appointments %}
+        <table class="table">
+            <thead>
+                <tr><th>Date</th><th>Time</th><th>Clinic / Ward</th><th>Reason</th><th>Status</th>
+                {% if current_user.role in ('admin', 'registry') %}<th class="text-right">Actions</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in appointments %}
+                <tr>
+                    <td>{{ a.scheduled_date.strftime("%d %b %Y") }}</td>
+                    <td>{{ a.scheduled_time or "—" }}</td>
+                    <td>{{ a.clinic_ward_unit or "—" }}</td>
+                    <td>{{ a.reason or "—" }}</td>
+                    <td>
+                        {% if a.status == "Completed" %}
+                        <span class="badge badge-success">Completed</span>
+                        {% elif a.status == "Cancelled" or a.status == "No-show" %}
+                        <span class="badge badge-danger">{{ a.status }}</span>
+                        {% else %}
+                        <span class="badge badge-pending">Scheduled</span>
+                        {% endif %}
+                    </td>
+                    {% if current_user.role in ('admin', 'registry') %}
+                    <td class="text-right">
+                        {% if a.status == "Scheduled" %}
+                        <form method="POST" action="{{ url_for('appointment_status_update', appointment_id=a.id) }}" style="display:inline;">
+                            <input type="hidden" name="status" value="Completed">
+                            <button type="submit" class="btn btn-sm btn-outline">Completed</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('appointment_status_update', appointment_id=a.id) }}" style="display:inline;">
+                            <input type="hidden" name="status" value="Cancelled">
+                            <button type="submit" class="btn btn-sm btn-outline">Cancel</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-hint">No appointments scheduled yet.</p>
+        {% endif %}
+    </div>
 </div>
 
 <style>
@@ -197,6 +406,11 @@
     color: #94a3b8;
 }
 
+.badge-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
@@ -240,6 +454,76 @@ code {
     border-radius: 0.25rem;
     font-family: 'IBM Plex Mono', 'Courier New', monospace;
     font-size: 0.85rem;
+}
+
+.note-form, .movement-form, .document-form, .appointment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.note-input {
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    color: #ccc;
+    padding: 0.6rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.88rem;
+    resize: vertical;
+    width: 100%;
+}
+
+.note-input:focus {
+    outline: none;
+    border-color: #3fcf5f;
+}
+
+.note-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.note-item {
+    border-bottom: 1px solid #292929;
+    padding-bottom: 0.85rem;
+}
+
+.note-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.note-meta {
+    font-size: 0.76rem;
+    color: #888;
+    margin-bottom: 0.3rem;
+}
+
+.note-text {
+    color: #ccc;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+
+.file-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    align-items: center;
+}
+
+.file-number-form {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
 }
 
 @media (max-width: 900px) {

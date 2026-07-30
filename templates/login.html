@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Log in — SupplyLink{% endblock %}
+{% block title %}Log in — Afya Link{% endblock %}
 {% block content %}
 <div class="auth-wrap">
   <div class="auth-card" style="--card-accent:var(--cyan); --card-glow:rgba(45,212,238,.18);">
@@ -17,26 +17,71 @@
 
     <div class="auth-brand">
       <div class="brand-icon">💊</div>
-      <div class="brand-name">SupplyLink</div>
+      <div class="brand-name">Afya Link</div>
     </div>
 
     <p class="auth-eyebrow"><span class="status-dot" style="display:inline-block; margin-right:.4rem; vertical-align:middle;"></span>SYSTEM ACCESS</p>
-    <h1 class="auth-title">Log in</h1>
-    <p class="auth-sub">Enter your credentials to reach the dashboard.</p>
 
-    <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}">
+    {% if role and role_label %}
+      <h1 class="auth-title">Log in as {{ role_label }}</h1>
+      <p class="auth-sub">Enter your {{ role_label }} credentials to reach your dashboard.</p>
+    {% else %}
+      <h1 class="auth-title">Log in</h1>
+      <p class="auth-sub">Enter your credentials to reach the dashboard.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login', role=role, next=request.args.get('next')) }}">
+      <input type="hidden" name="role" value="{{ role or '' }}">
       <div class="field">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required autofocus placeholder="you@hospital.org">
       </div>
       <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required placeholder="••••••••">
+        <div class="password-field-wrap">
+          <input type="password" id="password" name="password" required placeholder="••••••••">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" aria-label="Show password">👁</button>
+        </div>
       </div>
-      <button type="submit" class="btn-primary">Log in</button>
+      <p class="field-hint" style="text-align: right; margin-top: -0.5rem;">Forgot your password? Contact your system administrator.</p>
+      <button type="submit" class="btn-primary">
+        {% if role_label %}Log in as {{ role_label }}{% else %}Log in{% endif %}
+      </button>
     </form>
+
+   {% if role %}
+  <p class="auth-switch" style="margin-top:.5rem;">
+    Not {{ role_label }}? <a href="{{ url_for('home') }}">Choose a different department</a>
+  </p>
+{% endif %}
 
     <p class="auth-switch">No account yet? <a href="{{ url_for('register') }}">Register</a></p>
   </div>
 </div>
+
+<style>
+  .password-field-wrap { position: relative; }
+  .password-field-wrap input { padding-right: 2.6rem; }
+  .password-toggle-btn {
+    position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 1rem;
+    color: var(--text-muted, #8a8a95); padding: .25rem; line-height: 1;
+  }
+  .password-toggle-btn:hover { color: var(--text, #f2f2f5); }
+</style>
+
+<script>
+  function togglePasswordVisibility(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (input.type === "password") {
+      input.type = "text";
+      btn.textContent = "🙈";
+      btn.setAttribute("aria-label", "Hide password");
+    } else {
+      input.type = "password";
+      btn.textContent = "👁";
+      btn.setAttribute("aria-label", "Show password");
+    }
+  }
+</script>
 {% endblock %}

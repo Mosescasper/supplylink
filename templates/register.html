@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Register — SupplyLink{% endblock %}
+{% block title %}Register — Afya Link{% endblock %}
 {% block content %}
 <div class="auth-wrap">
   <div class="auth-card" style="--card-accent:var(--purple); --card-glow:rgba(184,102,255,.18);">
@@ -17,12 +17,12 @@
 
     <div class="auth-brand">
       <div class="brand-icon">💊</div>
-      <div class="brand-name">SupplyLink</div>
+      <div class="brand-name">Afya Link</div>
     </div>
 
     <p class="auth-eyebrow"><span class="status-dot" style="display:inline-block; margin-right:.4rem; vertical-align:middle; background:var(--purple); box-shadow:0 0 8px var(--purple);"></span>NEW OPERATOR</p>
     <h1 class="auth-title">Create an account</h1>
-    <p class="auth-sub">Register for SupplyLink Hospital Inventory.</p>
+    <p class="auth-sub">Register for Afya Link Hospital Inventory.</p>
 
     <form method="POST" action="{{ url_for('register') }}">
       <div class="field">
@@ -36,34 +36,41 @@
       </div>
 
       <div class="field">
-        <label for="department_id">Department</label>
-        <select id="department_id" name="department_id">
-          <option value="">— None / not applicable —</option>
-          {% for dept in departments %}
-            <option value="{{ dept.id }}">{{ dept.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="field">
         <label for="role">Role</label>
-        <select id="role" name="role" required>
+        <select id="role" name="role" required onchange="syncDepartmentForRole()">
           <option value="" disabled selected>Select a role</option>
           {% for r in roles %}
-            <option value="{{ r }}">{{ r.replace('_', ' ')|title }}</option>
+           <option value="{{ r }}">{{ roles_labels[r] }}</option>
           {% endfor %}
         </select>
         <p class="field-hint">Select the account type that matches your role at the hospital.</p>
       </div>
 
       <div class="field">
+        <label for="department_id">Department</label>
+        <select id="department_id" name="department_id">
+          <option value="">— None / not applicable —</option>
+          {% for dept in departments %}
+            <option value="{{ dept.id }}" data-name="{{ dept.name }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="field-hint" id="department-hint" style="display:none;">Registry accounts are organized under HIS (Health Information System).</p>
+      </div>
+
+      <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required minlength="6" placeholder="••••••••">
+        <div class="password-field-wrap">
+          <input type="password" id="password" name="password" required minlength="6" placeholder="••••••••">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" aria-label="Show password">👁</button>
+        </div>
       </div>
 
       <div class="field">
         <label for="confirm_password">Confirm password</label>
-        <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="••••••••">
+        <div class="password-field-wrap">
+          <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="••••••••">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('confirm_password', this)" aria-label="Show password">👁</button>
+        </div>
       </div>
 
       <button type="submit" class="btn-primary">Create account</button>
@@ -72,4 +79,53 @@
     <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
   </div>
 </div>
+
+<style>
+  .password-field-wrap { position: relative; }
+  .password-field-wrap input { padding-right: 2.6rem; }
+  .password-toggle-btn {
+    position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 1rem;
+    color: var(--text-muted, #8a8a95); padding: .25rem; line-height: 1;
+  }
+  .password-toggle-btn:hover { color: var(--text, #f2f2f5); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // No event listeners here — role select calls this directly via inline
+  // onchange, consistent with the rest of the app's JS convention.
+  function syncDepartmentForRole() {
+    var roleSelect = document.getElementById("role");
+    var deptSelect = document.getElementById("department_id");
+    var hint = document.getElementById("department-hint");
+
+    if (roleSelect.value === "registry") {
+      var options = deptSelect.options;
+      for (var i = 0; i < options.length; i++) {
+        if (options[i].dataset.name && options[i].dataset.name.indexOf("HIS") !== -1) {
+          deptSelect.value = options[i].value;
+          break;
+        }
+      }
+      hint.style.display = "block";
+    } else {
+      hint.style.display = "none";
+    }
+  }
+
+  function togglePasswordVisibility(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (input.type === "password") {
+      input.type = "text";
+      btn.textContent = "🙈";
+      btn.setAttribute("aria-label", "Hide password");
+    } else {
+      input.type = "password";
+      btn.textContent = "👁";
+      btn.setAttribute("aria-label", "Show password");
+    }
+  }
+</script>
 {% endblock %}

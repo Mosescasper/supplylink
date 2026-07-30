@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block page_title %}Users{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="role-pill">{{ user.role_label }}</span></td>
+                <td>{{ user.department.name if user.department else "—" }}</td>
+                <td style="white-space:nowrap; display:flex; gap:8px; align-items:center;">
+                    <a href="{{ url_for('user_reset_password', user_id=user.id) }}" class="btn btn-sm">Reset Password</a>
+                    {% if user.id != current_user.id %}
+                    <form method="POST" action="{{ url_for('user_force_logout', user_id=user.id) }}" onsubmit="return confirm('Force logout {{ user.name }}?');" style="display:inline;">
+                        <button type="submit" class="btn btn-sm">Log Out</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('user_delete', user_id=user.id) }}" onsubmit="return confirm('Permanently delete {{ user.name }}? This cannot be undone.');" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                    {% else %}
+                    <span style="color:var(--text-muted); font-size:12px;">(you)</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="empty-state">No users found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
