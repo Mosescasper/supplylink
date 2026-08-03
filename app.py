@@ -19,6 +19,7 @@ from sqlalchemy import func
 import os
 import uuid
 from werkzeug.utils import secure_filename
+import boto3
 
 from config import Config
 from extensions import db, login_manager
@@ -38,7 +39,13 @@ app.config.from_object(Config)
 
 db.init_app(app)
 login_manager.init_app(app)
-migrate = Migrate(app, db)
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=Config.R2_ENDPOINT_URL,
+    aws_access_key_id=Config.R2_ACCESS_KEY_ID,
+    aws_secret_access_key=Config.R2_SECRET_ACCESS_KEY,
+    region_name=Config.R2_REGION,
+)
 
 app.register_blueprint(admin_bp)
 app.register_blueprint(hospital_bp)
@@ -2454,10 +2461,6 @@ def _allowed_document_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_DOCUMENT_EXTENSIONS
 
 
-def _patient_documents_dir():
-    upload_dir = os.path.join(app.root_path, "uploads", "patient_documents")
-    os.makedirs(upload_dir, exist_ok=True)
-    return upload_dir
 
 
 @app.route("/patients/<int:patient_id>/documents", methods=["POST"])
@@ -2480,7 +2483,7 @@ def patient_document_upload(patient_id):
     ext = original_filename.rsplit(".", 1)[1].lower()
     stored_filename = f"{uuid.uuid4().hex}.{ext}"
 
-    file.save(os.path.join(_patient_documents_dir(), stored_filename))
+    s3_client.upload_fileobj(file, Config.R2_BUCKET_NAME, stored_filename)
 
     doc = PatientDocument(
         patient_id=patient.id,
@@ -2500,10 +2503,16 @@ def patient_document_upload(patient_id):
 @login_required
 def patient_document_download(document_id):
     doc = PatientDocument.query.get_or_404(document_id)
-    return send_from_directory(
-        _patient_documents_dir(), doc.stored_filename,
-        as_attachment=True, download_name=doc.original_filename,
+    url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": Config.R2_BUCKET_NAME,
+            "Key": doc.stored_filename,
+            "ResponseContentDisposition": f'attachment; filename="{doc.original_filename}"',
+        },
+        ExpiresIn=300,  # link valid for 5 minutes
     )
+    return redirect(url)
 
 # ---------------------------------------------------------------------------
 # Appointments (registry)

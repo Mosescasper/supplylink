@@ -38,3 +38,9 @@ class Config:
     # File uploads (delivery notes, PO scans, etc. if needed later)
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8MB
+    # Cloudflare R2 / Backblaze B2 (S3-compatible) storage for patient documents
+    R2_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL")
+    R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
+    R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+    R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "supplylink-documents")
+    R2_REGION = os.environ.get("R2_REGION", "us-east-005")
