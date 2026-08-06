@@ -1685,14 +1685,14 @@ def purchase_requisition_new():
     return render_template("purchase_requisitions/form.html", departments=departments, items=items)
 
 ROLE_RESTOCK_SOURCE_DEST = {
-    "pharmacist": ("Drug Store", "Holding"),
+    "hod_pharmacy": ("Drug Store", "Holding"),
     "store_officer": ("Supply Chain Store", "Drug Store"),
 }
 
 
 @app.route("/requisitions/restock/new", methods=["GET", "POST"])
 @login_required
-@role_required("pharmacist", "store_officer")
+@role_required("hod_pharmacy", "store_officer")
 def requisition_restock_new():
     source, destination = ROLE_RESTOCK_SOURCE_DEST[current_user.role]
     items = Item.query.order_by(Item.name).all()

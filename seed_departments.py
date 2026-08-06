@@ -1,45 +1,63 @@
-"""One-off script to seed initial hospital departments.
-Run once with: python seed_departments.py
-Safe to re-run — skips any department that already exists by name.
 """
+Seeds the Department records that SupplyLink's role-based logic depends on
+by name (pharmacist scoping, registry HIS auto-select, restock requisition
+source/destination lookups, etc.).
+
+Safe to re-run -- skips any department name that already exists.
+
+USAGE (from inside your project folder, with DATABASE_URL already set to
+whichever database you want to seed):
+
+    python seed_departments.py
+"""
+
 from app import app
 from extensions import db
 from models import Department
 
-# is_store=True marks physical stock-holding points used as requisition
-# issue_points (Drug Store, Holding, Outpatient Pharmacy, Inpatient
-# Pharmacy, Supply Chain). Everything else is a clinical/admin department
-# that *requests* stock via requisitions.
-#
-# Clinical department names match MKRH's actual published services
-# (https://mkrh.go.ke/services) so they line up with how the hospital
-# already refers to them.
+# Add or edit this list to match your hospital's actual department
+# structure. The names marked REQUIRED are checked by exact string match
+# elsewhere in the codebase -- renaming them will break that logic unless
+# you also update the corresponding code.
 DEPARTMENTS = [
-    ("Drug Store", True),
-    ("Holding", True),
-    ("Outpatient Pharmacy", True),
-    ("Inpatient Pharmacy", True),
-    ("Supply Chain", True),
-    ("HIS", False),                 # Hospital Information System / IT
-    ("Emergency Trolley", False),   # required — referenced by name in app.py
-    ("MOPC", False),                # Medical Outpatient Clinic
-    ("Maternity Unit", False),
-    ("Newborn Unit", False),
-    ("Dental Unit", False),
-    ("Renal Unit", False),
-    ("Ophthalmology Unit", False),
+    ("Drug Store", True),              # REQUIRED -- store_officer scope, restock source
+    ("Holding", True),                 # REQUIRED -- pharmacist scope, restock destination
+    ("Outpatient Pharmacy", True),     # REQUIRED -- pharmacist scope (exact match)
+    ("Inpatient Pharmacy", True),      # REQUIRED -- pharmacist scope (exact match)
+    ("Supply Chain Store", True),      # REQUIRED -- supply_chain scope, restock source
+    ("HIS (Health Information System)", True),  # REQUIRED -- must contain "HIS", registry auto-select
+    # Add real clinical departments/wards below as needed, e.g.:
+    # ("Maternity Ward", False),
+    # ("General Outpatient Clinic", False),
 ]
 
-with app.app_context():
-    created = 0
-    for name, is_store in DEPARTMENTS:
-        existing = Department.query.filter_by(name=name).first()
-        if existing:
-            print(f"Skipping (already exists): {name}")
-            continue
-        db.session.add(Department(name=name, is_store=is_store))
-        created += 1
-        print(f"Created: {name}")
 
-    db.session.commit()
-    print(f"\nDone. {created} department(s) created.")
+def main():
+    with app.app_context():
+        created = []
+        skipped = []
+
+        for name, is_store in DEPARTMENTS:
+            existing = Department.query.filter_by(name=name).first()
+            if existing:
+                skipped.append(name)
+                continue
+
+            dept = Department(name=name, is_store=is_store)
+            db.session.add(dept)
+            created.append(name)
+
+        db.session.commit()
+
+        print(f"Created {len(created)} department(s):")
+        for name in created:
+            print(f"  + {name}")
+
+        if skipped:
+            print(f"\nAlready existed, skipped {len(skipped)}:")
+            for name in skipped:
+                print(f"  = {name}")
+
+
+if __name__ == "__main__":
+    main()

@@ -5,7 +5,7 @@
 {% block page_title %}Requisitions (S11){% endblock %}
 
 {% block page_actions %}
-{% if current_user.role in ['pharmacist', 'store_officer'] %}
+{% if current_user.role in ['hod_pharmacy', 'store_officer'] %}
 <a href="{{ url_for('requisition_restock_new') }}" class="btn btn-primary">+ Restock Requisition</a>
 {% endif %}
 <a href="{{ url_for('requisition_new') }}" class="btn">+ New Requisition</a>

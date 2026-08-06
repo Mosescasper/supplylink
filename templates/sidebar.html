@@ -76,17 +76,21 @@
         </a>
         {% endif %}
 
+        {% if current_user.role != 'pharmacist' or 'Outpatient Pharmacy' in pharmacist_scope %}
         <a href="{{ url_for('outpatient_dispense') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('outpatient_') else '' }}">
             <span class="sidebar-icon">💊</span>
-            <span class="sidebar-label">Outpatient Pharmacy</span>
+            <span class="sidebar-label">Dispense</span>
         </a>
+        {% endif %}
 
+        {% if current_user.role != 'pharmacist' or 'Inpatient Pharmacy' in pharmacist_scope %}
         <a href="{{ url_for('inpatient_dispense') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('inpatient_') else '' }}">
             <span class="sidebar-icon">🛏️</span>
-            <span class="sidebar-label">Inpatient Pharmacy</span>
+            <span class="sidebar-label">Dispense</span>
         </a>
+        {% endif %}
 
         <a href="{{ url_for('reports_index') }}"
            class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('report') else '' }}">
