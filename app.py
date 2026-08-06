@@ -2066,11 +2066,14 @@ def requisition_reject(req_id):
 @login_required
 def requisition_issue(req_id):
     """Approved -> Issued. Deducts stock FEFO from the issue point and logs
-    movements. If this requisition has a destination_location set (i.e. a
-    restock requisition, not a department consumption S11), the deducted
-    stock is also received into matching batches at that destination --
-    mirroring batch_transfer()'s find-or-create-by-batch-number approach,
-    so it doesn't just vanish from the system."""
+    movements, and creates/updates the corresponding batch at the correct
+    destination so stock doesn't vanish from the system:
+      - Restock requisitions (destination_location set) -> that location.
+      - Holding-sourced requisitions (OP/IP Pharmacy drawing on Holding)
+        -> the requesting department's own location (Outpatient Pharmacy /
+        Inpatient Pharmacy), since that's what dispensing draws from.
+      - Everything else (e.g. a ward consuming from Drug Store) -> no
+        destination batch; this is genuine consumption, not a transfer."""
     req = Requisition.query.get_or_404(req_id)
     if not _can_action_requisition(current_user, req):
         flash("You don't have permission to issue this requisition.", "danger")
@@ -2078,6 +2081,13 @@ def requisition_issue(req_id):
     if req.status != "Approved":
         flash("Only approved requisitions can be issued.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
+
+    if req.destination_location:
+        destination = req.destination_location
+    elif req.issue_point == "Holding":
+        destination = req.department.name
+    else:
+        destination = None
 
     for line in req.lines:
         remaining_to_issue = float(line.quantity_required)
@@ -2095,18 +2105,16 @@ def requisition_issue(req_id):
             batch.quantity_remaining = float(batch.quantity_remaining) - take
             remaining_to_issue -= take
 
-            movement_to_location = req.destination_location or req.department.name
-
             log_movement(line.item, batch, "issue", take,
                          from_location=req.issue_point,
-                         to_location=movement_to_location,
+                         to_location=destination or req.department.name,
                          reference=req.req_number)
 
-            if req.destination_location:
+            if destination:
                 dest_batch = Batch.query.filter_by(
                     item_id=batch.item_id,
                     batch_number=batch.batch_number,
-                    location=req.destination_location,
+                    location=destination,
                 ).first()
                 if not dest_batch:
                     dest_batch = Batch(
@@ -2115,7 +2123,7 @@ def requisition_issue(req_id):
                         expiry_date=batch.expiry_date,
                         quantity_received=0,
                         quantity_remaining=0,
-                        location=req.destination_location,
+                        location=destination,
                     )
                     db.session.add(dest_batch)
                     db.session.flush()
@@ -2127,8 +2135,7 @@ def requisition_issue(req_id):
     req.issued_by_id = current_user.id
     db.session.commit()
     flash(f"{req.req_number} issued and stock deducted.", "success")
-    return redirect(url_for("requisition_detail", req_id=req.id))
-@app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
+    return redirect(url_for("requisition_detail", req_id=req.id))@app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
 @login_required
 @role_required("pharmacist")
 def requisition_receive(req_id):
