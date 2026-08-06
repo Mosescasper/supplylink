@@ -2065,7 +2065,12 @@ def requisition_reject(req_id):
 @app.route("/requisitions/<int:req_id>/issue", methods=["POST"])
 @login_required
 def requisition_issue(req_id):
-    """Approved -> Issued. Deducts stock FEFO from the issue point and logs movements."""
+    """Approved -> Issued. Deducts stock FEFO from the issue point and logs
+    movements. If this requisition has a destination_location set (i.e. a
+    restock requisition, not a department consumption S11), the deducted
+    stock is also received into matching batches at that destination --
+    mirroring batch_transfer()'s find-or-create-by-batch-number approach,
+    so it doesn't just vanish from the system."""
     req = Requisition.query.get_or_404(req_id)
     if not _can_action_requisition(current_user, req):
         flash("You don't have permission to issue this requisition.", "danger")
@@ -2073,8 +2078,6 @@ def requisition_issue(req_id):
     if req.status != "Approved":
         flash("Only approved requisitions can be issued.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
-
-    dest_location = "Outpatient Pharmacy" if req.issue_point == "Holding" else req.issue_point
 
     for line in req.lines:
         remaining_to_issue = float(line.quantity_required)
@@ -2092,10 +2095,31 @@ def requisition_issue(req_id):
             batch.quantity_remaining = float(batch.quantity_remaining) - take
             remaining_to_issue -= take
 
+            movement_to_location = req.destination_location or req.department.name
+
             log_movement(line.item, batch, "issue", take,
                          from_location=req.issue_point,
-                         to_location=req.department.name,
+                         to_location=movement_to_location,
                          reference=req.req_number)
+
+            if req.destination_location:
+                dest_batch = Batch.query.filter_by(
+                    item_id=batch.item_id,
+                    batch_number=batch.batch_number,
+                    location=req.destination_location,
+                ).first()
+                if not dest_batch:
+                    dest_batch = Batch(
+                        item_id=batch.item_id,
+                        batch_number=batch.batch_number,
+                        expiry_date=batch.expiry_date,
+                        quantity_received=0,
+                        quantity_remaining=0,
+                        location=req.destination_location,
+                    )
+                    db.session.add(dest_batch)
+                    db.session.flush()
+                dest_batch.quantity_remaining = float(dest_batch.quantity_remaining) + take
 
         line.quantity_issued = float(line.quantity_required) - remaining_to_issue
 
