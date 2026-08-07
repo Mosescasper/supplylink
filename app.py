@@ -2170,7 +2170,10 @@ def requisition_issue(req_id):
     req.issued_by_id = current_user.id
     db.session.commit()
     flash(f"{req.req_number} issued and stock deducted.", "success")
-    return redirect(url_for("requisition_detail", req_id=req.id))@app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
+    return redirect(url_for("requisition_detail", req_id=req.id))
+    
+    
+@app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
 @login_required
 @role_required("pharmacist")
 def requisition_receive(req_id):
