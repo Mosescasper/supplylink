@@ -10,16 +10,17 @@
       <div class="pr-line form-row" style="align-items:flex-end;">
         <div class="form-group">
           <label>Item</label>
-          <select name="item_id[]" class="form-control" required>
+          <select name="item_id[]" class="form-control item-select" required>
             <option value="">Select item</option>
             {% for item in items %}
             <option value="{{ item.id }}">{{ item.name }} ({{ item.sku }})</option>
             {% endfor %}
           </select>
+          <div class="line-stats-hint"></div>
         </div>
         <div class="form-group">
           <label>Quantity</label>
-          <input type="number" step="0.01" name="quantity_required[]" class="form-control" required>
+          <input type="number" step="0.01" name="quantity_required[]" class="form-control qty-input" required>
         </div>
         <div class="form-group">
           <label>Remarks (optional)</label>
@@ -37,13 +38,85 @@
   </form>
 </div>
 
+<style>
+.line-stats-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted, #888);
+    margin-top: 0.35rem;
+    min-height: 1.1em;
+}
+.line-stats-hint.stats-warning {
+    color: var(--orange, #ff9d3d);
+}
+.line-stats-hint.stats-danger {
+    color: var(--red, #ff3b5f);
+    font-weight: 600;
+}
+</style>
+
 <script>
+var RESTOCK_SOURCE = {{ source|tojson }};
+
 document.getElementById('add-line-btn').addEventListener('click', function () {
   const wrap = document.getElementById('lines-wrap');
   const clone = wrap.firstElementChild.cloneNode(true);
   clone.querySelectorAll('input').forEach(i => i.value = '');
   clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  clone.querySelector('.line-stats-hint').textContent = '';
+  clone.querySelector('.line-stats-hint').className = 'line-stats-hint';
   wrap.appendChild(clone);
+});
+
+function renderHint(hintEl, data, row) {
+    hintEl.classList.remove("stats-warning", "stats-danger");
+
+    if (data.available_stock === null || data.available_stock === undefined) {
+        hintEl.textContent = "";
+        return;
+    }
+
+    hintEl.textContent = "In stock at " + data.location + ": " + data.available_stock;
+
+    if (data.available_stock <= 0) {
+        hintEl.classList.add("stats-danger");
+    } else {
+        var qtyInput = row.querySelector(".qty-input");
+        var requested = qtyInput ? parseFloat(qtyInput.value) : NaN;
+        if (!isNaN(requested) && requested > data.available_stock) {
+            hintEl.classList.add("stats-warning");
+        }
+    }
+}
+
+function fetchAndShowStock(selectEl) {
+    var row = selectEl.closest(".pr-line");
+    var itemId = selectEl.value;
+    var hintEl = row.querySelector(".line-stats-hint");
+
+    if (!itemId) {
+        hintEl.textContent = "";
+        hintEl.classList.remove("stats-warning", "stats-danger");
+        return;
+    }
+
+    var url = "/api/requisitions/item-stats?item_id=" + encodeURIComponent(itemId) +
+               "&location=" + encodeURIComponent(RESTOCK_SOURCE);
+
+    hintEl.textContent = "Loading…";
+    fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderHint(hintEl, data, row); })
+        .catch(function () { hintEl.textContent = ""; });
+}
+
+document.getElementById('lines-wrap').addEventListener('change', function (event) {
+    if (event.target.classList.contains('item-select')) {
+        fetchAndShowStock(event.target);
+    } else if (event.target.classList.contains('qty-input')) {
+        var row = event.target.closest('.pr-line');
+        var itemSelect = row.querySelector('.item-select');
+        if (itemSelect.value) fetchAndShowStock(itemSelect);
+    }
 });
 </script>
 {% endblock %}

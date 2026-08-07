@@ -2172,7 +2172,7 @@ def requisition_issue(req_id):
     flash(f"{req.req_number} issued and stock deducted.", "success")
     return redirect(url_for("requisition_detail", req_id=req.id))
     
-    
+
 @app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
 @login_required
 @role_required("pharmacist")
@@ -2309,21 +2309,33 @@ def api_patient_search():
 @login_required
 def api_requisition_item_stats():
     """Live stats for the requisition form: this department's average
-    monthly usage of an item (from Issued requisition history) and the
+    monthly usage of an item (from Issued requisition history), the
     actual max allowed quantity — same calculation requisition_new()
-    enforces at submit time, so this preview can never disagree with it."""
+    enforces at submit time, so this preview can never disagree with it —
+    and, if a location is passed, the item's current available stock at
+    that location, so requesters can see up front whether the source
+    actually has what they're asking for."""
     item_id = request.args.get("item_id", type=int)
     department_id = request.args.get("department_id", type=int)
+    location = request.args.get("location", "").strip()
 
     if not item_id:
         return jsonify({"error": "item_id is required"}), 400
 
+    item = Item.query.get(item_id)
+    if not item:
+        return jsonify({"error": "item not found"}), 404
+
     avg = _department_avg_monthly_consumption(department_id, item_id) if department_id else None
     max_allowed = round(avg * Config.REQUISITION_MAX_MULTIPLIER, 2) if avg is not None else None
+
+    available_stock = _scoped_quantity(item, [location]) if location else None
 
     return jsonify({
         "avg": round(avg, 2) if avg is not None else None,
         "max_allowed": max_allowed,
+        "available_stock": available_stock,
+        "location": location or None,
     })
 @app.route("/api/notifications/pending-requisitions-count")
 @login_required

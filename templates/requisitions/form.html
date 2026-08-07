@@ -57,7 +57,7 @@
                         <div class="line-stats-hint"></div>
                     </td>
                     <td>
-                        <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
+                        <input type="number" name="quantity_required[]" class="form-control qty-input" step="0.01" min="0" required>
                     </td>
                     <td>
                         <input type="text" name="remarks[]" class="form-control" placeholder="Optional">
@@ -91,7 +91,7 @@
             <div class="line-stats-hint"></div>
         </td>
         <td>
-            <input type="number" name="quantity_required[]" class="form-control" step="0.01" min="0" required>
+            <input type="number" name="quantity_required[]" class="form-control qty-input" step="0.01" min="0" required>
         </td>
         <td>
             <input type="text" name="remarks[]" class="form-control" placeholder="Optional">
@@ -112,6 +112,10 @@
 .line-stats-hint.stats-warning {
     color: var(--orange, #ff9d3d);
 }
+.line-stats-hint.stats-danger {
+    color: var(--red, #ff3b5f);
+    font-weight: 600;
+}
 </style>
 
 <script>
@@ -120,6 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var addLineBtn = document.getElementById("add-line-btn");
     var lineTemplate = document.getElementById("req-line-template");
     var departmentSelect = document.getElementById("department_id");
+    var issuePointSelect = document.getElementById("issue_point");
 
     addLineBtn.addEventListener("click", function () {
         var clone = lineTemplate.content.cloneNode(true);
@@ -136,34 +141,56 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // -----------------------------------------------------------------
-    // Live "dept avg / max allowed" hint
+    // Live "dept avg / max allowed / stock available" hint
     // -----------------------------------------------------------------
+    function renderHint(hintEl, data, row) {
+        var parts = [];
+
+        var avgText = (data.avg !== null && data.avg !== undefined) ? data.avg : "no history yet";
+        parts.push("Your dept's avg: " + avgText + " · Max allowed: " + (data.max_allowed ?? "—"));
+
+        hintEl.classList.remove("stats-warning", "stats-danger");
+
+        if (data.available_stock !== null && data.available_stock !== undefined) {
+            parts.push("In stock at " + data.location + ": " + data.available_stock);
+
+            if (data.available_stock <= 0) {
+                hintEl.classList.add("stats-danger");
+            } else {
+                var qtyInput = row.querySelector(".qty-input");
+                var requested = qtyInput ? parseFloat(qtyInput.value) : NaN;
+                if (!isNaN(requested) && requested > data.available_stock) {
+                    hintEl.classList.add("stats-warning");
+                }
+            }
+        }
+
+        hintEl.textContent = parts.join(" · ");
+    }
+
     function fetchAndShowStats(selectEl) {
+        var row = selectEl.closest(".req-line-row");
         var itemId = selectEl.value;
-        var hintEl = selectEl.parentElement.querySelector(".line-stats-hint");
+        var hintEl = row.querySelector(".line-stats-hint");
 
         if (!itemId) {
             hintEl.textContent = "";
+            hintEl.classList.remove("stats-warning", "stats-danger");
             return;
         }
 
         var departmentId = departmentSelect.value;
+        var issuePoint = issuePointSelect.value;
         var url = "/api/requisitions/item-stats?item_id=" + encodeURIComponent(itemId);
-        if (departmentId) {
-            url += "&department_id=" + encodeURIComponent(departmentId);
-        }
+        if (departmentId) url += "&department_id=" + encodeURIComponent(departmentId);
+        if (issuePoint) url += "&location=" + encodeURIComponent(issuePoint);
 
         hintEl.textContent = "Loading…";
-        hintEl.classList.remove("stats-warning");
+        hintEl.classList.remove("stats-warning", "stats-danger");
 
         fetch(url)
             .then(function (r) { return r.json(); })
-            .then(function (data) {
-                var avgText = (data.avg !== null && data.avg !== undefined)
-                    ? data.avg
-                    : "no history yet";
-                hintEl.textContent = "Your dept's avg: " + avgText + " · Max allowed: " + data.max_allowed;
-            })
+            .then(function (data) { renderHint(hintEl, data, row); })
             .catch(function () {
                 hintEl.textContent = "";
             });
@@ -176,12 +203,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     linesBody.addEventListener("change", function (event) {
-        if (event.target.classList.contains("item-select")) {
-            fetchAndShowStats(event.target);
+        if (event.target.classList.contains("item-select") || event.target.classList.contains("qty-input")) {
+            var row = event.target.closest(".req-line-row");
+            var itemSelect = row.querySelector(".item-select");
+            if (itemSelect.value) fetchAndShowStats(itemSelect);
         }
     });
 
     departmentSelect.addEventListener("change", refreshAllLineHints);
+    issuePointSelect.addEventListener("change", refreshAllLineHints);
 });
 </script>
 {% endblock %}
