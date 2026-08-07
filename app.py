@@ -81,7 +81,24 @@ def inject_hospital_info():
         hospital_phone_1=Config.HOSPITAL_PHONE_1,
         hospital_phone_2=Config.HOSPITAL_PHONE_2,
     )
+@app.context_processor
+def inject_pending_requisition_count():
+    """Powers the notification badge next to 'Requisitions' in the sidebar.
+    Meaning differs by role -- see _pending_action_requisitions_count and
+    _recently_issued_for_pharmacist_count further down the file."""
+    if not current_user.is_authenticated:
+        return dict(pending_requisition_count=0)
 
+    role = current_user.role
+    if role == "pharmacist":
+        count = _recently_issued_for_pharmacist_count(current_user)
+    elif role in ("admin", "store_officer", "hod_pharmacy"):
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
+        count = _pending_action_requisitions_count(role, scope_locations)
+    else:
+        count = 0
+
+    return dict(pending_requisition_count=count)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -529,7 +546,25 @@ def _scoped_pending_requisitions_count(role, scope_locations):
         query = query.filter(Requisition.requested_by_id == current_user.id)
 
     return query.count()
+def _pending_action_requisitions_count(role, scope_locations):
+    """'Something needs YOUR action' count -- store_officer/hod_pharmacy/admin."""
+    query = Requisition.query.filter_by(status="Pending")
+    if role == "store_officer":
+        query = query.filter(Requisition.issue_point == "Drug Store")
+    elif role == "hod_pharmacy":
+        query = query.filter(Requisition.issue_point == "Holding")
+    return query.count()
 
+
+def _recently_issued_for_pharmacist_count(user, hours=24):
+    """'Something you're waiting on just arrived' count -- pharmacist only.
+    Requisitions THEY raised that moved to Issued within the last `hours`."""
+    since = datetime.utcnow() - timedelta(hours=hours)
+    return Requisition.query.filter(
+        Requisition.requested_by_id == user.id,
+        Requisition.status == "Issued",
+        Requisition.created_at >= since,
+    ).count()
 
 def _can_action_requisition(user, req):
     """Who may approve/reject/issue a given requisition depends on WHERE
@@ -2287,7 +2322,21 @@ def api_requisition_item_stats():
         "avg": round(avg, 2) if avg is not None else None,
         "max_allowed": max_allowed,
     })
+@app.route("/api/notifications/pending-requisitions-count")
+@login_required
+def api_pending_requisitions_count():
+    role = current_user.role
+    if role == "pharmacist":
+        count = _recently_issued_for_pharmacist_count(current_user)
+        kind = "issued"
+    elif role in ("admin", "store_officer", "hod_pharmacy"):
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
+        count = _pending_action_requisitions_count(role, scope_locations)
+        kind = "action_needed"
+    else:
+        count, kind = 0, "action_needed"
 
+    return jsonify({"count": count, "kind": kind})
 @app.route("/patients/new", methods=["GET", "POST"])
 @login_required
 @role_required("registry")
