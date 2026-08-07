@@ -270,6 +270,10 @@
       <a class="nav-link {{ 'active' if request.endpoint and 'inventory' in request.endpoint else '' }}" href="{{ url_for('inventory_list') }}"><span class="ic">📁</span> Drug Store Inventory</a>
       {% endif %}
 
+      {% if current_user.role == 'hod_pharmacy' %}
+      <a class="nav-link {{ 'active' if request.endpoint and 'inventory' in request.endpoint else '' }}" href="{{ url_for('inventory_list') }}"><span class="ic">📁</span> Pharmacy Inventory</a>
+      {% endif %}
+
       {% if current_user.role == 'doctor' %}
       <a class="nav-link {{ 'active' if request.endpoint and 'patient' in request.endpoint else '' }}" href="{{ url_for('patient_list') }}"><span class="ic">🧑‍⚕️</span> Patients</a>
       <a class="nav-link {{ 'active' if request.endpoint == 'prescription_new' else '' }}" href="{{ url_for('prescription_new') }}"><span class="ic">🩺</span> Write Prescription</a>
