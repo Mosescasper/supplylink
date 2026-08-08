@@ -420,6 +420,10 @@ class Requisition(db.Model):
     req_number = db.Column(db.String(50), nullable=False, unique=True)
     department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False)
     issue_point = db.Column(db.String(50), nullable=False)  # source location stock is issued FROM
+    # When this requisition actually moved to "Issued" -- distinct from
+    # created_at (when it was raised). Used to flag receipt as overdue if
+    # the requester hasn't confirmed receipt within 48h of issue.
+    issued_at = db.Column(db.DateTime)
     # Only set for store-to-store restock requisitions (Pharmacy -> Drug
     # Store -> Holding, or Drug Store -> Supply Chain Store). NULL for normal
     # department/ward requisitions, which still just consume stock as before.

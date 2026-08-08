@@ -91,7 +91,7 @@ def inject_pending_requisition_count():
 
     role = current_user.role
     if role == "pharmacist":
-        count = _recently_issued_for_pharmacist_count(current_user)
+        count, _overdue = _pharmacist_notification_state(current_user)
     elif role in ("admin", "store_officer", "hod_pharmacy"):
         scope_locations = ROLE_LOCATION_SCOPE.get(role)
         count = _pending_action_requisitions_count(role, scope_locations)
@@ -547,8 +547,10 @@ def _scoped_pending_requisitions_count(role, scope_locations):
 
     return query.count()
 def _pending_action_requisitions_count(role, scope_locations):
-    """'Something needs YOUR action' count -- store_officer/hod_pharmacy/admin."""
-    query = Requisition.query.filter_by(status="Pending")
+    """'Something needs YOUR action' count -- store_officer/hod_pharmacy/admin.
+    Covers both Pending (needs approve/reject) and Approved (needs issue) --
+    an item only stops needing action once it's actually Issued."""
+    query = Requisition.query.filter(Requisition.status.in_(["Pending", "Approved"]))
     if role == "store_officer":
         query = query.filter(Requisition.issue_point == "Drug Store")
     elif role == "hod_pharmacy":
@@ -556,15 +558,28 @@ def _pending_action_requisitions_count(role, scope_locations):
     return query.count()
 
 
-def _recently_issued_for_pharmacist_count(user, hours=24):
-    """'Something you're waiting on just arrived' count -- pharmacist only.
-    Requisitions THEY raised that moved to Issued within the last `hours`."""
-    since = datetime.utcnow() - timedelta(hours=hours)
+def _unreceived_issued_requisitions(user):
+    """Requisitions THIS pharmacist raised that are Issued but not yet
+    acknowledged (received_by_id is still NULL) -- true unread state,
+    cleared only when they click 'Confirm Receipt', not by time passing."""
     return Requisition.query.filter(
         Requisition.requested_by_id == user.id,
         Requisition.status == "Issued",
-        Requisition.created_at >= since,
-    ).count()
+        Requisition.received_by_id.is_(None),
+    ).all()
+
+
+def _pharmacist_notification_state(user):
+    """Count + overdue flag for the pharmacist's notification badge.
+    'Overdue' = issued more than 48h ago and still not confirmed received --
+    same 48h SLA window already used elsewhere in this app."""
+    unreceived = _unreceived_issued_requisitions(user)
+    now = datetime.utcnow()
+    overdue = any(
+        req.issued_at and (now - req.issued_at).total_seconds() > 48 * 3600
+        for req in unreceived
+    )
+    return len(unreceived), overdue
 
 def _can_action_requisition(user, req):
     """Who may approve/reject/issue a given requisition depends on WHERE
@@ -2178,8 +2193,8 @@ def requisition_issue(req_id):
 
     req.status = "Issued"
     req.issued_by_id = current_user.id
+    req.issued_at = datetime.utcnow()
     db.session.commit()
-
     if any_short:
         flash(
             f"{req.req_number} issued, but some lines couldn't be fully "
@@ -2360,8 +2375,9 @@ def api_requisition_item_stats():
 @login_required
 def api_pending_requisitions_count():
     role = current_user.role
+    overdue = False
     if role == "pharmacist":
-        count = _recently_issued_for_pharmacist_count(current_user)
+        count, overdue = _pharmacist_notification_state(current_user)
         kind = "issued"
     elif role in ("admin", "store_officer", "hod_pharmacy"):
         scope_locations = ROLE_LOCATION_SCOPE.get(role)
@@ -2370,7 +2386,7 @@ def api_pending_requisitions_count():
     else:
         count, kind = 0, "action_needed"
 
-    return jsonify({"count": count, "kind": kind})
+    return jsonify({"count": count, "kind": kind, "overdue": overdue})
 @app.route("/patients/new", methods=["GET", "POST"])
 @login_required
 @role_required("registry")
