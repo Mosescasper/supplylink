@@ -2100,15 +2100,13 @@ def requisition_reject(req_id):
 @app.route("/requisitions/<int:req_id>/issue", methods=["POST"])
 @login_required
 def requisition_issue(req_id):
-    """Approved -> Issued. Deducts stock FEFO from the issue point and logs
-    movements, and creates/updates the corresponding batch at the correct
-    destination so stock doesn't vanish from the system:
-      - Restock requisitions (destination_location set) -> that location.
-      - Holding-sourced requisitions (OP/IP Pharmacy drawing on Holding)
-        -> the requesting department's own location (Outpatient Pharmacy /
-        Inpatient Pharmacy), since that's what dispensing draws from.
-      - Everything else (e.g. a ward consuming from Drug Store) -> no
-        destination batch; this is genuine consumption, not a transfer."""
+    """Approved -> Issued. Deducts stock FEFO from the issue point, using
+    the quantity the issuer actually entered per line (capped between 0
+    and quantity_required, defaulting to quantity_required if left blank
+    or invalid) rather than always issuing the full required amount.
+    Creates/updates the corresponding batch at the correct destination so
+    stock doesn't vanish from the system -- see destination resolution
+    notes from the previous version of this function."""
     req = Requisition.query.get_or_404(req_id)
     if not _can_action_requisition(current_user, req):
         flash("You don't have permission to issue this requisition.", "danger")
@@ -2124,8 +2122,17 @@ def requisition_issue(req_id):
     else:
         destination = None
 
+    any_short = False
+
     for line in req.lines:
-        remaining_to_issue = float(line.quantity_required)
+        requested_field = request.form.get(f"issue_qty_{line.id}", "")
+        try:
+            qty_to_issue = float(requested_field) if requested_field != "" else float(line.quantity_required)
+        except ValueError:
+            qty_to_issue = float(line.quantity_required)
+        qty_to_issue = max(0.0, min(qty_to_issue, float(line.quantity_required)))
+
+        remaining_to_issue = qty_to_issue
         batches = (
             Batch.query.filter_by(item_id=line.item_id, location=req.issue_point)
             .filter(Batch.quantity_remaining > 0)
@@ -2164,12 +2171,24 @@ def requisition_issue(req_id):
                     db.session.flush()
                 dest_batch.quantity_remaining = float(dest_batch.quantity_remaining) + take
 
-        line.quantity_issued = float(line.quantity_required) - remaining_to_issue
+        actually_issued = qty_to_issue - remaining_to_issue
+        line.quantity_issued = actually_issued
+        if actually_issued < qty_to_issue:
+            any_short = True
 
     req.status = "Issued"
     req.issued_by_id = current_user.id
     db.session.commit()
-    flash(f"{req.req_number} issued and stock deducted.", "success")
+
+    if any_short:
+        flash(
+            f"{req.req_number} issued, but some lines couldn't be fully "
+            f"fulfilled — {req.issue_point} didn't have enough stock. "
+            f"Check the requisition lines for the actual quantities issued.",
+            "warning",
+        )
+    else:
+        flash(f"{req.req_number} issued and stock deducted.", "success")
     return redirect(url_for("requisition_detail", req_id=req.id))
     
 
