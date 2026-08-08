@@ -746,13 +746,7 @@ def dashboard():
             .limit(8)
             .all()
         )
-        elif role == "ward_user":
-        context["my_requisitions"] = (
-            Requisition.query.filter_by(department_id=current_user.department_id)
-            .order_by(Requisition.created_at.desc())
-            .limit(10)
-            .all()
-        )
+        
     elif role == "store_officer":
         context["drug_store_value"] = _scoped_stock_value(items, ["Drug Store"])
         context["holding_value"] = _scoped_stock_value(items, ["Holding"])
@@ -799,6 +793,7 @@ def dashboard():
             .limit(8)
             .all()
         )
+        
     elif role == "pharmacist":
         pharmacy_location_cards = [(loc, _scoped_stock_value(items, [loc])) for loc in scope_locations]
         context["pharmacy_location_cards"] = pharmacy_location_cards
