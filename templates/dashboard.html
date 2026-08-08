@@ -62,7 +62,7 @@
       <div class="kpi-sub">at or below reorder</div>
     </a>
 
-    {% if role not in ['pharmacist', 'hod_pharmacy'] %}
+    {% if role not in ['pharmacist', 'hod_pharmacy', 'ward_user'] %}
     <a href="{{ url_for('po_list') }}" class="kpi-card kpi-card--purple">
       <div class="kpi-top">
         <span class="kpi-label">Open POs</span>
@@ -83,6 +83,7 @@
         {% if role == 'store_officer' %}Drug Store
         {% elif role == 'hod_pharmacy' %}Holding — awaiting your approval
         {% elif role == 'pharmacist' %}raised by you
+        {% elif role == 'ward_user' %}raised by your department
         {% else %}awaiting approval{% endif %}
       </div>
     </a>
@@ -884,7 +885,40 @@
     </div>
   </div>
   {% endif %}
+{% if role == 'ward_user' %}
+  <div class="dash-section">
+    <h2 class="dash-section-title">{{ current_user.department.name if current_user.department else 'Department' }} — Requisitions</h2>
 
+    <div class="panel panel--full panel--magenta">
+      <div class="panel-header">
+        <h2 class="panel-title">My Requisitions</h2>
+        <span class="panel-tag">RAISED BY MY DEPARTMENT</span>
+      </div>
+      {% if my_requisitions %}
+      <table class="panel-table">
+        <thead><tr><th>S11 No.</th><th>Issue Point</th><th>Required</th><th>Issued</th><th>Status</th><th>Raised</th></tr></thead>
+        <tbody>
+          {% for r in my_requisitions %}
+          <tr>
+            <td><a href="{{ url_for('requisition_detail', req_id=r.id) }}">{{ r.req_number }}</a></td>
+            <td>{{ r.issue_point }}</td>
+            <td>{{ r.total_required_quantity|int }}</td>
+            <td>{{ r.total_issued_quantity|int }}</td>
+            <td><span class="status-tag status-tag--{{ r.status|lower }}">{{ r.status }}</span></td>
+            <td>{{ r.created_at.strftime('%d %b') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="panel-empty">No requisitions raised yet.</p>
+      {% endif %}
+      <div class="panel-footer">
+        <a href="{{ url_for('requisition_new') }}" class="panel-footer-link">+ Raise a new requisition &rarr;</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 

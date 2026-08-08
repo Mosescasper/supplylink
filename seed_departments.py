@@ -25,7 +25,13 @@ DEPARTMENTS = [
     ("Outpatient Pharmacy", True),     # REQUIRED -- pharmacist scope (exact match)
     ("Inpatient Pharmacy", True),      # REQUIRED -- pharmacist scope (exact match)
     ("Supply Chain Store", True),      # REQUIRED -- supply_chain scope, restock source
-    ("HIS (Health Information System)", True),  # REQUIRED -- must contain "HIS", registry auto-select
+    ("HIS (Health Information System)", True),
+    ("ICU", True),
+    ("Accident & Emergency", True),
+    ("Theatre", True),
+    ("Labs", True),
+    ("Oncology", True),
+    # REQUIRED -- must contain "HIS", registry auto-select
     # Add real clinical departments/wards below as needed, e.g.:
     # ("Maternity Ward", False),
     # ("General Outpatient Clinic", False),

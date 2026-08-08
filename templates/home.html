@@ -196,6 +196,20 @@
    </a>
   </div>
 
+  <div style="max-width:420px; margin:0 auto 2.5rem; text-align:center;">
+    <a href="{{ url_for('login', role='ward_user') }}"
+       style="display:inline-flex; align-items:center; gap:.6rem; color:#eaf3f7; text-decoration:none;
+              border:1px solid rgba(148,210,230,.4); background:rgba(20,45,62,.35);
+              padding:.7rem 1.3rem; border-radius:999px; font-size:.88rem; font-weight:600;
+              backdrop-filter:blur(2px); transition:border-color .18s, background .18s;"
+       onmouseover="this.style.borderColor='#2dd4ee'; this.style.background='rgba(45,212,238,.14)';"
+       onmouseout="this.style.borderColor='rgba(148,210,230,.4)'; this.style.background='rgba(20,45,62,.35)';">
+      <span>🏥</span> Other Departments (ICU, A&amp;E, Theatre, Labs, Oncology)
+    </a>
+  </div>
+
+  <div class="hub-foot-links">
+
   <div class="hub-foot-links">
     <a href="{{ url_for('login') }}">Log in</a>
     <a href="{{ url_for('register') }}">Register</a>

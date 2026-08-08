@@ -72,6 +72,13 @@ def inject_pharmacist_scope():
         return dict(pharmacist_scope=_pharmacist_scope_locations(current_user))
     return dict(pharmacist_scope=None)
 
+def _ward_scope_locations(user):
+    """A ward/department account is scoped to exactly its own department's
+    location -- e.g. an ICU account only sees ICU's own stock."""
+    if user.department:
+        return [user.department.name]
+    return []
+
 # Inject hospital info into all templates (letterhead/contact)
 @app.context_processor
 def inject_hospital_info():
@@ -221,10 +228,10 @@ def _csv_response(filename, header, rows):
 @app.route("/register", methods=["GET", "POST"])
 def register():
     departments = Department.query.order_by(Department.name).all()
-    # Only these three roles are ever offered / accepted.
-    roles = User.ROLES
-    roles_labels = User.ROLE_LABELS  # define once, reuse in every render_template call below
-
+    # ward_user accounts are admin-created only (see /users/new-ward-account) --
+    # never offered on public self-registration.
+    roles = [r for r in User.ROLES if r != "ward_user"]
+    roles_labels = User.ROLE_LABELS
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -350,6 +357,37 @@ def user_delete(user_id):
     flash(f"{user.name} has been deleted.", "success")
     return redirect(url_for("user_list"))
 
+@app.route("/users/new-ward-account", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def user_new_ward_account():
+    ward_departments = Department.query.filter(
+        Department.name.in_(["ICU", "Accident & Emergency", "Theatre", "Labs", "Oncology"])
+    ).order_by(Department.name).all()
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        department_id = request.form.get("department_id")
+
+        if not name or not email or not password or not department_id:
+            flash("All fields are required.", "danger")
+            return render_template("users/new_ward_account.html", departments=ward_departments)
+
+        if User.query.filter_by(email=email).first():
+            flash("An account with that email already exists.", "danger")
+            return render_template("users/new_ward_account.html", departments=ward_departments)
+
+        user = User(name=name, email=email, role="ward_user", department_id=department_id)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        flash(f"Ward account created for {name} ({user.department.name}).", "success")
+        return redirect(url_for("user_list"))
+
+    return render_template("users/new_ward_account.html", departments=ward_departments)
 
 @app.route("/users/<int:user_id>/force-logout", methods=["POST"])
 @login_required
@@ -416,6 +454,8 @@ def _current_scope_locations():
     """Locations the logged-in user's role is restricted to. None = unscoped (admin/doctor)."""
     if current_user.role == "pharmacist":
         return _pharmacist_scope_locations(current_user)
+    if current_user.role == "ward_user":
+        return _ward_scope_locations(current_user)
     return ROLE_LOCATION_SCOPE.get(current_user.role)
 def _scoped_quantity(item, locations):
     """On-hand quantity for an item, restricted to a set of locations.
@@ -535,6 +575,7 @@ def _scoped_pending_requisitions_count(role, scope_locations):
                                  (Drug Store -> Holding -> Dispensing flow:
                                  OP/IP requisitioning FROM Holding)
         pharmacist            -> only requisitions THEY personally raised
+        ward_user             -> only requisitions THEIR department raised
     """
     query = Requisition.query.filter_by(status="Pending")
 
@@ -544,6 +585,8 @@ def _scoped_pending_requisitions_count(role, scope_locations):
         query = query.filter(Requisition.issue_point == "Holding")
     elif role == "pharmacist":
         query = query.filter(Requisition.requested_by_id == current_user.id)
+    elif role == "ward_user":
+        query = query.filter(Requisition.department_id == current_user.department_id)
 
     return query.count()
 def _pending_action_requisitions_count(role, scope_locations):
@@ -607,7 +650,12 @@ def _can_action_requisition(user, req):
 @login_required
 def dashboard():
     role = current_user.role
-    scope_locations = _pharmacist_scope_locations(current_user) if role == "pharmacist" else ROLE_LOCATION_SCOPE.get(role)
+    if role == "pharmacist":
+        scope_locations = _pharmacist_scope_locations(current_user)
+    elif role == "ward_user":
+        scope_locations = _ward_scope_locations(current_user)
+    else:
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
 
     items = Item.query.all()
     scoped_items = _scoped_items(items, scope_locations)
@@ -696,6 +744,13 @@ def dashboard():
             Requisition.query.filter(Requisition.status == "Issued")
             .order_by(Requisition.created_at.desc())
             .limit(8)
+            .all()
+        )
+        elif role == "ward_user":
+        context["my_requisitions"] = (
+            Requisition.query.filter_by(department_id=current_user.department_id)
+            .order_by(Requisition.created_at.desc())
+            .limit(10)
             .all()
         )
     elif role == "store_officer":
@@ -1999,11 +2054,12 @@ def delivery_detail(delivery_id):
 def requisition_list():
     status = request.args.get("status")
     query = Requisition.query
+    if current_user.role == "ward_user":
+        query = query.filter_by(department_id=current_user.department_id)
     if status:
         query = query.filter_by(status=status)
     reqs = query.order_by(Requisition.created_at.desc()).all()
     return render_template("requisitions/list.html", requisitions=reqs, status=status)
-
 
 @app.route("/requisitions/new", methods=["GET", "POST"])
 @login_required
@@ -2072,10 +2128,12 @@ def requisition_new():
 @login_required
 def requisition_detail(req_id):
     req = Requisition.query.get_or_404(req_id)
+    if current_user.role == "ward_user" and req.department_id != current_user.department_id:
+        flash("You can only view requisitions raised by your own department.", "danger")
+        return redirect(url_for("requisition_list"))
     can_action = _can_action_requisition(current_user, req)
     return render_template("requisitions/detail.html", req=req, currency=Config.CURRENCY,
                             can_action=can_action)
-
 @app.route("/requisitions/<int:req_id>/approve", methods=["POST"])
 @login_required
 def requisition_approve(req_id):
@@ -2132,7 +2190,7 @@ def requisition_issue(req_id):
 
     if req.destination_location:
         destination = req.destination_location
-    elif req.issue_point == "Holding":
+    elif req.department and req.department.name in LOCATIONS:
         destination = req.department.name
     else:
         destination = None

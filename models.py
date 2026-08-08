@@ -42,7 +42,7 @@ class Hospital(db.Model):
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
-    ROLES = ("admin", "store_officer", "pharmacist", "hod_pharmacy", "doctor", "supply_chain", "registry")
+    ROLES = ("admin", "store_officer", "pharmacist", "hod_pharmacy", "doctor", "supply_chain", "registry", "ward_user")
 
     ROLE_LABELS = {
         "admin": "Admin",
@@ -52,6 +52,7 @@ class User(UserMixin, db.Model):
         "doctor": "Doctor",
         "supply_chain": "Supply Chain",
         "registry": "Registry",
+        "ward_user": "Ward / Department",
     }
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
@@ -163,7 +164,8 @@ class Item(db.Model):
         return f"<Item {self.sku} {self.name}>"
 
 
-LOCATIONS = ("Supply Chain Store", "Drug Store", "Holding", "Outpatient Pharmacy", "Inpatient Pharmacy")
+LOCATIONS = ("Supply Chain Store", "Drug Store", "Holding", "Outpatient Pharmacy", "Inpatient Pharmacy",
+             "ICU", "Accident & Emergency", "Theatre", "Labs", "Oncology")
 
 
 class Batch(db.Model):
