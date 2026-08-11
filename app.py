@@ -369,6 +369,11 @@ def user_delete(user_id):
         return redirect(url_for("user_list"))
 
     user = User.query.get_or_404(user_id)
+
+    if user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower():
+        flash("The system administrator's account can't be deleted by anyone.", "danger")
+        return redirect(url_for("user_list"))
+
     db.session.delete(user)
     db.session.commit()
     flash(f"{user.name} has been deleted.", "success")
@@ -415,6 +420,11 @@ def user_force_logout(user_id):
         return redirect(url_for("user_list"))
 
     user = User.query.get_or_404(user_id)
+
+    if user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower():
+        flash("The system administrator's account can't be force-logged-out by anyone.", "danger")
+        return redirect(url_for("user_list"))
+
     user.force_logout_at = datetime.utcnow()
     db.session.commit()
     flash(f"{user.name} will be logged out on their next request.", "success")
@@ -425,6 +435,11 @@ def user_force_logout(user_id):
 @role_required("admin")
 def user_reset_password(user_id):
     user = User.query.get_or_404(user_id)
+
+    if (user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower()
+            and current_user.email.lower() != Config.SUPER_ADMIN_EMAIL.lower()):
+        flash("Only the system administrator can reset their own password.", "danger")
+        return redirect(url_for("user_list"))
 
     if request.method == "POST":
         new_password = request.form.get("new_password", "")
