@@ -126,6 +126,21 @@ def role_required(*roles):
     return decorator
 
 
+def super_admin_required(view_fn):
+    """Restricts a route to exactly one email, not just 'any admin'.
+    Used only for account creation -- so even if someone else somehow got
+    an admin account, they still couldn't create more accounts."""
+    @wraps(view_fn)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for("login"))
+        if current_user.email.lower() != Config.SUPER_ADMIN_EMAIL.lower():
+            flash("Only the system administrator can create accounts.", "danger")
+            return redirect(url_for("dashboard"))
+        return view_fn(*args, **kwargs)
+    return wrapped
+
+
 def next_reference(prefix, model, field):
     """Generate a simple sequential reference like S11-000123 / PO-000045."""
     count = db.session.query(model).count() + 1
@@ -226,6 +241,8 @@ def _csv_response(filename, header, rows):
 # submission can't create a user with any other role.
 
 @app.route("/register", methods=["GET", "POST"])
+@login_required
+@super_admin_required
 def register():
     departments = Department.query.order_by(Department.name).all()
     # ward_user accounts are admin-created only (see /users/new-ward-account) --
@@ -359,7 +376,7 @@ def user_delete(user_id):
 
 @app.route("/users/new-ward-account", methods=["GET", "POST"])
 @login_required
-@role_required("admin")
+@super_admin_required
 def user_new_ward_account():
     ward_departments = Department.query.filter(
         Department.name.in_(["ICU", "Accident & Emergency", "Theatre", "Labs", "Oncology"])

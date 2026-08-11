@@ -38,6 +38,10 @@ class Config:
     # File uploads (delivery notes, PO scans, etc. if needed later)
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8MB
+
+    # Only this email can create user accounts (register/ward-account routes)
+    SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "mm5134065@gmail.com")
+
     # Cloudflare R2 / Backblaze B2 (S3-compatible) storage for patient documents
     R2_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL")
     R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
