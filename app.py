@@ -3907,4 +3907,4 @@ def api_doctor_completion_rate():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
