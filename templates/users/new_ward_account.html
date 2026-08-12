@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Create Ward Account{% endblock %}
+
+{% block page_title %}Create Ward Account{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('user_list') }}" class="btn">Back to Users</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+    <p class="form-hint" style="margin-top:0;">
+        These accounts are for ICU, Accident &amp; Emergency, Theatre, Labs, and Oncology only.
+        Each account can see just its own department's stock and requisitions.
+    </p>
+    <form method="POST">
+        <div class="form-group">
+            <label for="name">Full name</label>
+            <input type="text" id="name" name="name" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="department_id">Department</label>
+            <select id="department_id" name="department_id" class="form-control" required>
+                <option value="">-- Select Department --</option>
+                {% for department in departments %}
+                <option value="{{ department.id }}">{{ department.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" class="form-control" minlength="6" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Account</button>
+            <a href="{{ url_for('user_list') }}" class="btn">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

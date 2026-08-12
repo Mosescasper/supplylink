@@ -42,7 +42,7 @@ class Hospital(db.Model):
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
-    ROLES = ("admin", "store_officer", "pharmacist", "hod_pharmacy", "doctor", "supply_chain", "registry")
+    ROLES = ("admin", "store_officer", "pharmacist", "hod_pharmacy", "doctor", "supply_chain", "registry", "ward_user")
 
     ROLE_LABELS = {
         "admin": "Admin",
@@ -52,6 +52,7 @@ class User(UserMixin, db.Model):
         "doctor": "Doctor",
         "supply_chain": "Supply Chain",
         "registry": "Registry",
+        "ward_user": "Ward / Department",
     }
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
@@ -163,7 +164,8 @@ class Item(db.Model):
         return f"<Item {self.sku} {self.name}>"
 
 
-LOCATIONS = ("Supply Chain Store", "Drug Store", "Holding", "Outpatient Pharmacy", "Inpatient Pharmacy")
+LOCATIONS = ("Supply Chain Store", "Drug Store", "Holding", "Outpatient Pharmacy", "Inpatient Pharmacy",
+             "ICU", "Accident & Emergency", "Theatre", "Labs", "Oncology")
 
 
 class Batch(db.Model):
@@ -420,6 +422,10 @@ class Requisition(db.Model):
     req_number = db.Column(db.String(50), nullable=False, unique=True)
     department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False)
     issue_point = db.Column(db.String(50), nullable=False)  # source location stock is issued FROM
+    # When this requisition actually moved to "Issued" -- distinct from
+    # created_at (when it was raised). Used to flag receipt as overdue if
+    # the requester hasn't confirmed receipt within 48h of issue.
+    issued_at = db.Column(db.DateTime)
     # Only set for store-to-store restock requisitions (Pharmacy -> Drug
     # Store -> Holding, or Drug Store -> Supply Chain Store). NULL for normal
     # department/ward requisitions, which still just consume stock as before.
@@ -687,6 +693,9 @@ class Prescription(db.Model):
     # Dispensed", or "Dispensed" (fully given out). Walk-in dispense routes
     # set this straight to "Dispensed" since they write and dispense at once.
     status = db.Column(db.String(30), nullable=False, default="Pending")
+    # Free-text notes entered at dispense time — optional, e.g. instructions,
+    # follow-up date, general remarks. Not tied to any specific medicine line.
+    notes = db.Column(db.Text)
 
     patient = db.relationship("Patient", back_populates="prescriptions")
     prescriber = db.relationship("Prescriber")

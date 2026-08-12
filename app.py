@@ -19,6 +19,7 @@ from sqlalchemy import func
 import os
 import uuid
 from werkzeug.utils import secure_filename
+import boto3
 
 from config import Config
 from extensions import db, login_manager
@@ -37,8 +38,15 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
-login_manager.init_app(app)
 migrate = Migrate(app, db)
+login_manager.init_app(app)
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=Config.R2_ENDPOINT_URL,
+    aws_access_key_id=Config.R2_ACCESS_KEY_ID,
+    aws_secret_access_key=Config.R2_SECRET_ACCESS_KEY,
+    region_name=Config.R2_REGION,
+)
 
 app.register_blueprint(admin_bp)
 app.register_blueprint(hospital_bp)
@@ -65,6 +73,13 @@ def inject_pharmacist_scope():
         return dict(pharmacist_scope=_pharmacist_scope_locations(current_user))
     return dict(pharmacist_scope=None)
 
+def _ward_scope_locations(user):
+    """A ward/department account is scoped to exactly its own department's
+    location -- e.g. an ICU account only sees ICU's own stock."""
+    if user.department:
+        return [user.department.name]
+    return []
+
 # Inject hospital info into all templates (letterhead/contact)
 @app.context_processor
 def inject_hospital_info():
@@ -74,7 +89,24 @@ def inject_hospital_info():
         hospital_phone_1=Config.HOSPITAL_PHONE_1,
         hospital_phone_2=Config.HOSPITAL_PHONE_2,
     )
+@app.context_processor
+def inject_pending_requisition_count():
+    """Powers the notification badge next to 'Requisitions' in the sidebar.
+    Meaning differs by role -- see _pending_action_requisitions_count and
+    _recently_issued_for_pharmacist_count further down the file."""
+    if not current_user.is_authenticated:
+        return dict(pending_requisition_count=0)
 
+    role = current_user.role
+    if role == "pharmacist":
+        count, _overdue = _pharmacist_notification_state(current_user)
+    elif role in ("admin", "store_officer", "hod_pharmacy"):
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
+        count = _pending_action_requisitions_count(role, scope_locations)
+    else:
+        count = 0
+
+    return dict(pending_requisition_count=count)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -93,6 +125,21 @@ def role_required(*roles):
             return view_fn(*args, **kwargs)
         return wrapped
     return decorator
+
+
+def super_admin_required(view_fn):
+    """Restricts a route to exactly one email, not just 'any admin'.
+    Used only for account creation -- so even if someone else somehow got
+    an admin account, they still couldn't create more accounts."""
+    @wraps(view_fn)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for("login"))
+        if current_user.email.lower() != Config.SUPER_ADMIN_EMAIL.lower():
+            flash("Only the system administrator can create accounts.", "danger")
+            return redirect(url_for("dashboard"))
+        return view_fn(*args, **kwargs)
+    return wrapped
 
 
 def next_reference(prefix, model, field):
@@ -195,12 +242,14 @@ def _csv_response(filename, header, rows):
 # submission can't create a user with any other role.
 
 @app.route("/register", methods=["GET", "POST"])
+@login_required
+@super_admin_required
 def register():
     departments = Department.query.order_by(Department.name).all()
-    # Only these three roles are ever offered / accepted.
-    roles = User.ROLES
-    roles_labels = User.ROLE_LABELS  # define once, reuse in every render_template call below
-
+    # ward_user accounts are admin-created only (see /users/new-ward-account) --
+    # never offered on public self-registration.
+    roles = [r for r in User.ROLES if r != "ward_user"]
+    roles_labels = User.ROLE_LABELS
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -321,11 +370,47 @@ def user_delete(user_id):
         return redirect(url_for("user_list"))
 
     user = User.query.get_or_404(user_id)
+
+    if user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower():
+        flash("The system administrator's account can't be deleted by anyone.", "danger")
+        return redirect(url_for("user_list"))
+
     db.session.delete(user)
     db.session.commit()
     flash(f"{user.name} has been deleted.", "success")
     return redirect(url_for("user_list"))
 
+@app.route("/users/new-ward-account", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def user_new_ward_account():
+    ward_departments = Department.query.filter(
+        Department.name.in_(["ICU", "Accident & Emergency", "Theatre", "Labs", "Oncology"])
+    ).order_by(Department.name).all()
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        department_id = request.form.get("department_id")
+
+        if not name or not email or not password or not department_id:
+            flash("All fields are required.", "danger")
+            return render_template("users/new_ward_account.html", departments=ward_departments)
+
+        if User.query.filter_by(email=email).first():
+            flash("An account with that email already exists.", "danger")
+            return render_template("users/new_ward_account.html", departments=ward_departments)
+
+        user = User(name=name, email=email, role="ward_user", department_id=department_id)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        flash(f"Ward account created for {name} ({user.department.name}).", "success")
+        return redirect(url_for("user_list"))
+
+    return render_template("users/new_ward_account.html", departments=ward_departments)
 
 @app.route("/users/<int:user_id>/force-logout", methods=["POST"])
 @login_required
@@ -336,6 +421,11 @@ def user_force_logout(user_id):
         return redirect(url_for("user_list"))
 
     user = User.query.get_or_404(user_id)
+
+    if user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower():
+        flash("The system administrator's account can't be force-logged-out by anyone.", "danger")
+        return redirect(url_for("user_list"))
+
     user.force_logout_at = datetime.utcnow()
     db.session.commit()
     flash(f"{user.name} will be logged out on their next request.", "success")
@@ -346,6 +436,11 @@ def user_force_logout(user_id):
 @role_required("admin")
 def user_reset_password(user_id):
     user = User.query.get_or_404(user_id)
+
+    if (user.email.lower() == Config.SUPER_ADMIN_EMAIL.lower()
+            and current_user.email.lower() != Config.SUPER_ADMIN_EMAIL.lower()):
+        flash("Only the system administrator can reset their own password.", "danger")
+        return redirect(url_for("user_list"))
 
     if request.method == "POST":
         new_password = request.form.get("new_password", "")
@@ -392,6 +487,8 @@ def _current_scope_locations():
     """Locations the logged-in user's role is restricted to. None = unscoped (admin/doctor)."""
     if current_user.role == "pharmacist":
         return _pharmacist_scope_locations(current_user)
+    if current_user.role == "ward_user":
+        return _ward_scope_locations(current_user)
     return ROLE_LOCATION_SCOPE.get(current_user.role)
 def _scoped_quantity(item, locations):
     """On-hand quantity for an item, restricted to a set of locations.
@@ -511,6 +608,7 @@ def _scoped_pending_requisitions_count(role, scope_locations):
                                  (Drug Store -> Holding -> Dispensing flow:
                                  OP/IP requisitioning FROM Holding)
         pharmacist            -> only requisitions THEY personally raised
+        ward_user             -> only requisitions THEIR department raised
     """
     query = Requisition.query.filter_by(status="Pending")
 
@@ -520,9 +618,44 @@ def _scoped_pending_requisitions_count(role, scope_locations):
         query = query.filter(Requisition.issue_point == "Holding")
     elif role == "pharmacist":
         query = query.filter(Requisition.requested_by_id == current_user.id)
+    elif role == "ward_user":
+        query = query.filter(Requisition.department_id == current_user.department_id)
 
     return query.count()
+def _pending_action_requisitions_count(role, scope_locations):
+    """'Something needs YOUR action' count -- store_officer/hod_pharmacy/admin.
+    Covers both Pending (needs approve/reject) and Approved (needs issue) --
+    an item only stops needing action once it's actually Issued."""
+    query = Requisition.query.filter(Requisition.status.in_(["Pending", "Approved"]))
+    if role == "store_officer":
+        query = query.filter(Requisition.issue_point == "Drug Store")
+    elif role == "hod_pharmacy":
+        query = query.filter(Requisition.issue_point == "Holding")
+    return query.count()
 
+
+def _unreceived_issued_requisitions(user):
+    """Requisitions THIS pharmacist raised that are Issued but not yet
+    acknowledged (received_by_id is still NULL) -- true unread state,
+    cleared only when they click 'Confirm Receipt', not by time passing."""
+    return Requisition.query.filter(
+        Requisition.requested_by_id == user.id,
+        Requisition.status == "Issued",
+        Requisition.received_by_id.is_(None),
+    ).all()
+
+
+def _pharmacist_notification_state(user):
+    """Count + overdue flag for the pharmacist's notification badge.
+    'Overdue' = issued more than 48h ago and still not confirmed received --
+    same 48h SLA window already used elsewhere in this app."""
+    unreceived = _unreceived_issued_requisitions(user)
+    now = datetime.utcnow()
+    overdue = any(
+        req.issued_at and (now - req.issued_at).total_seconds() > 48 * 3600
+        for req in unreceived
+    )
+    return len(unreceived), overdue
 
 def _can_action_requisition(user, req):
     """Who may approve/reject/issue a given requisition depends on WHERE
@@ -550,7 +683,12 @@ def _can_action_requisition(user, req):
 @login_required
 def dashboard():
     role = current_user.role
-    scope_locations = _pharmacist_scope_locations(current_user) if role == "pharmacist" else ROLE_LOCATION_SCOPE.get(role)
+    if role == "pharmacist":
+        scope_locations = _pharmacist_scope_locations(current_user)
+    elif role == "ward_user":
+        scope_locations = _ward_scope_locations(current_user)
+    else:
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
 
     items = Item.query.all()
     scoped_items = _scoped_items(items, scope_locations)
@@ -641,6 +779,7 @@ def dashboard():
             .limit(8)
             .all()
         )
+        
     elif role == "store_officer":
         context["drug_store_value"] = _scoped_stock_value(items, ["Drug Store"])
         context["holding_value"] = _scoped_stock_value(items, ["Holding"])
@@ -687,6 +826,7 @@ def dashboard():
             .limit(8)
             .all()
         )
+        
     elif role == "pharmacist":
         pharmacy_location_cards = [(loc, _scoped_stock_value(items, [loc])) for loc in scope_locations]
         context["pharmacy_location_cards"] = pharmacy_location_cards
@@ -1678,14 +1818,14 @@ def purchase_requisition_new():
     return render_template("purchase_requisitions/form.html", departments=departments, items=items)
 
 ROLE_RESTOCK_SOURCE_DEST = {
-    "pharmacist": ("Drug Store", "Holding"),
+    "hod_pharmacy": ("Drug Store", "Holding"),
     "store_officer": ("Supply Chain Store", "Drug Store"),
 }
 
 
 @app.route("/requisitions/restock/new", methods=["GET", "POST"])
 @login_required
-@role_required("pharmacist", "store_officer")
+@role_required("hod_pharmacy", "store_officer")
 def requisition_restock_new():
     source, destination = ROLE_RESTOCK_SOURCE_DEST[current_user.role]
     items = Item.query.order_by(Item.name).all()
@@ -1942,11 +2082,12 @@ def delivery_detail(delivery_id):
 def requisition_list():
     status = request.args.get("status")
     query = Requisition.query
+    if current_user.role == "ward_user":
+        query = query.filter_by(department_id=current_user.department_id)
     if status:
         query = query.filter_by(status=status)
     reqs = query.order_by(Requisition.created_at.desc()).all()
     return render_template("requisitions/list.html", requisitions=reqs, status=status)
-
 
 @app.route("/requisitions/new", methods=["GET", "POST"])
 @login_required
@@ -2015,10 +2156,12 @@ def requisition_new():
 @login_required
 def requisition_detail(req_id):
     req = Requisition.query.get_or_404(req_id)
+    if current_user.role == "ward_user" and req.department_id != current_user.department_id:
+        flash("You can only view requisitions raised by your own department.", "danger")
+        return redirect(url_for("requisition_list"))
     can_action = _can_action_requisition(current_user, req)
     return render_template("requisitions/detail.html", req=req, currency=Config.CURRENCY,
                             can_action=can_action)
-
 @app.route("/requisitions/<int:req_id>/approve", methods=["POST"])
 @login_required
 def requisition_approve(req_id):
@@ -2058,7 +2201,13 @@ def requisition_reject(req_id):
 @app.route("/requisitions/<int:req_id>/issue", methods=["POST"])
 @login_required
 def requisition_issue(req_id):
-    """Approved -> Issued. Deducts stock FEFO from the issue point and logs movements."""
+    """Approved -> Issued. Deducts stock FEFO from the issue point, using
+    the quantity the issuer actually entered per line (capped between 0
+    and quantity_required, defaulting to quantity_required if left blank
+    or invalid) rather than always issuing the full required amount.
+    Creates/updates the corresponding batch at the correct destination so
+    stock doesn't vanish from the system -- see destination resolution
+    notes from the previous version of this function."""
     req = Requisition.query.get_or_404(req_id)
     if not _can_action_requisition(current_user, req):
         flash("You don't have permission to issue this requisition.", "danger")
@@ -2067,10 +2216,24 @@ def requisition_issue(req_id):
         flash("Only approved requisitions can be issued.", "warning")
         return redirect(url_for("requisition_detail", req_id=req.id))
 
-    dest_location = "Outpatient Pharmacy" if req.issue_point == "Holding" else req.issue_point
+    if req.destination_location:
+        destination = req.destination_location
+    elif req.department and req.department.name in LOCATIONS:
+        destination = req.department.name
+    else:
+        destination = None
+
+    any_short = False
 
     for line in req.lines:
-        remaining_to_issue = float(line.quantity_required)
+        requested_field = request.form.get(f"issue_qty_{line.id}", "")
+        try:
+            qty_to_issue = float(requested_field) if requested_field != "" else float(line.quantity_required)
+        except ValueError:
+            qty_to_issue = float(line.quantity_required)
+        qty_to_issue = max(0.0, min(qty_to_issue, float(line.quantity_required)))
+
+        remaining_to_issue = qty_to_issue
         batches = (
             Batch.query.filter_by(item_id=line.item_id, location=req.issue_point)
             .filter(Batch.quantity_remaining > 0)
@@ -2087,16 +2250,49 @@ def requisition_issue(req_id):
 
             log_movement(line.item, batch, "issue", take,
                          from_location=req.issue_point,
-                         to_location=req.department.name,
+                         to_location=destination or req.department.name,
                          reference=req.req_number)
 
-        line.quantity_issued = float(line.quantity_required) - remaining_to_issue
+            if destination:
+                dest_batch = Batch.query.filter_by(
+                    item_id=batch.item_id,
+                    batch_number=batch.batch_number,
+                    location=destination,
+                ).first()
+                if not dest_batch:
+                    dest_batch = Batch(
+                        item_id=batch.item_id,
+                        batch_number=batch.batch_number,
+                        expiry_date=batch.expiry_date,
+                        quantity_received=0,
+                        quantity_remaining=0,
+                        location=destination,
+                    )
+                    db.session.add(dest_batch)
+                    db.session.flush()
+                dest_batch.quantity_remaining = float(dest_batch.quantity_remaining) + take
+
+        actually_issued = qty_to_issue - remaining_to_issue
+        line.quantity_issued = actually_issued
+        if actually_issued < qty_to_issue:
+            any_short = True
 
     req.status = "Issued"
     req.issued_by_id = current_user.id
+    req.issued_at = datetime.utcnow()
     db.session.commit()
-    flash(f"{req.req_number} issued and stock deducted.", "success")
+    if any_short:
+        flash(
+            f"{req.req_number} issued, but some lines couldn't be fully "
+            f"fulfilled — {req.issue_point} didn't have enough stock. "
+            f"Check the requisition lines for the actual quantities issued.",
+            "warning",
+        )
+    else:
+        flash(f"{req.req_number} issued and stock deducted.", "success")
     return redirect(url_for("requisition_detail", req_id=req.id))
+    
+
 @app.route("/requisitions/<int:req_id>/receive", methods=["POST"])
 @login_required
 @role_required("pharmacist")
@@ -2229,27 +2425,75 @@ def api_patient_search():
         for p in patients
     ])
 
+@app.route("/api/patients/check")
+@login_required
+def api_patient_check():
+    """Live check used by the dispense forms as the pharmacist types/leaves
+    the OP/IP number field — lets the 'Patient Not Found' section appear
+    instantly instead of requiring a full form submission to find out."""
+    ip_op_number = request.args.get("ip_op_number", "").strip()
+    if not ip_op_number:
+        return jsonify({"found": False})
+
+    patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
+    if not patient:
+        return jsonify({"found": False})
+
+    return jsonify({
+        "found": True,
+        "name": patient.name,
+        "patient_type": patient.patient_type,
+        "clinic_ward_unit": patient.clinic_ward_unit or "",
+    })
+
 @app.route("/api/requisitions/item-stats")
 @login_required
 def api_requisition_item_stats():
     """Live stats for the requisition form: this department's average
-    monthly usage of an item (from Issued requisition history) and the
+    monthly usage of an item (from Issued requisition history), the
     actual max allowed quantity — same calculation requisition_new()
-    enforces at submit time, so this preview can never disagree with it."""
+    enforces at submit time, so this preview can never disagree with it —
+    and, if a location is passed, the item's current available stock at
+    that location, so requesters can see up front whether the source
+    actually has what they're asking for."""
     item_id = request.args.get("item_id", type=int)
     department_id = request.args.get("department_id", type=int)
+    location = request.args.get("location", "").strip()
 
     if not item_id:
         return jsonify({"error": "item_id is required"}), 400
 
+    item = Item.query.get(item_id)
+    if not item:
+        return jsonify({"error": "item not found"}), 404
+
     avg = _department_avg_monthly_consumption(department_id, item_id) if department_id else None
     max_allowed = round(avg * Config.REQUISITION_MAX_MULTIPLIER, 2) if avg is not None else None
+
+    available_stock = _scoped_quantity(item, [location]) if location else None
 
     return jsonify({
         "avg": round(avg, 2) if avg is not None else None,
         "max_allowed": max_allowed,
+        "available_stock": available_stock,
+        "location": location or None,
     })
+@app.route("/api/notifications/pending-requisitions-count")
+@login_required
+def api_pending_requisitions_count():
+    role = current_user.role
+    overdue = False
+    if role == "pharmacist":
+        count, overdue = _pharmacist_notification_state(current_user)
+        kind = "issued"
+    elif role in ("admin", "store_officer", "hod_pharmacy"):
+        scope_locations = ROLE_LOCATION_SCOPE.get(role)
+        count = _pending_action_requisitions_count(role, scope_locations)
+        kind = "action_needed"
+    else:
+        count, kind = 0, "action_needed"
 
+    return jsonify({"count": count, "kind": kind, "overdue": overdue})
 @app.route("/patients/new", methods=["GET", "POST"])
 @login_required
 @role_required("registry")
@@ -2454,10 +2698,6 @@ def _allowed_document_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_DOCUMENT_EXTENSIONS
 
 
-def _patient_documents_dir():
-    upload_dir = os.path.join(app.root_path, "uploads", "patient_documents")
-    os.makedirs(upload_dir, exist_ok=True)
-    return upload_dir
 
 
 @app.route("/patients/<int:patient_id>/documents", methods=["POST"])
@@ -2480,7 +2720,7 @@ def patient_document_upload(patient_id):
     ext = original_filename.rsplit(".", 1)[1].lower()
     stored_filename = f"{uuid.uuid4().hex}.{ext}"
 
-    file.save(os.path.join(_patient_documents_dir(), stored_filename))
+    s3_client.upload_fileobj(file, Config.R2_BUCKET_NAME, stored_filename)
 
     doc = PatientDocument(
         patient_id=patient.id,
@@ -2500,10 +2740,16 @@ def patient_document_upload(patient_id):
 @login_required
 def patient_document_download(document_id):
     doc = PatientDocument.query.get_or_404(document_id)
-    return send_from_directory(
-        _patient_documents_dir(), doc.stored_filename,
-        as_attachment=True, download_name=doc.original_filename,
+    url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": Config.R2_BUCKET_NAME,
+            "Key": doc.stored_filename,
+            "ResponseContentDisposition": f'attachment; filename="{doc.original_filename}"',
+        },
+        ExpiresIn=300,  # link valid for 5 minutes
     )
+    return redirect(url)
 
 # ---------------------------------------------------------------------------
 # Appointments (registry)
@@ -2969,8 +3215,35 @@ def outpatient_dispense():
         patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
 
         if not patient:
-            flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
-            return render_template("outpatient/dispense.html", items=items)
+            # No registry account for this pharmacist -- rather than blocking
+            # dispensing outright, let them register the patient inline.
+            new_patient_name = request.form.get("new_patient_name", "").strip()
+
+            if not new_patient_name:
+                # First submission with just the IP/OP number -- show the
+                # inline registration fields instead of the "blocked" message.
+                flash(
+                    f"No patient found with IP/OP number {ip_op_number}. "
+                    "Enter their details below to register and continue dispensing.",
+                    "warning",
+                )
+                return render_template("outpatient/dispense.html", items=items,
+                                        patient_not_found=True, ip_op_number=ip_op_number)
+
+            patient = Patient(
+                name=new_patient_name,
+                ip_op_number=ip_op_number,
+                gender=request.form.get("new_patient_gender") or None,
+                patient_type="Outpatient",
+                age=request.form.get("new_patient_age") or None,
+                weight=request.form.get("new_patient_weight") or None,
+                height=request.form.get("new_patient_height") or None,
+                contact=request.form.get("new_patient_contact") or None,
+                clinic_ward_unit=request.form.get("new_patient_clinic_ward_unit") or None,
+                drug_allergies=request.form.get("new_patient_drug_allergies") or None,
+            )
+            db.session.add(patient)
+            db.session.flush()
 
         # If a doctor has already written a prescription for this patient
         # that's waiting to be dispensed, send the pharmacist there instead
@@ -3001,8 +3274,6 @@ def outpatient_dispense():
             registration_number = prescriber.registration_number
             designation = prescriber.designation
         else:
-            # Fallback: no prescriber_id came through (e.g. JS disabled) —
-            # keep accepting the typed field so the form still works.
             prescriber_name = request.form.get("prescriber_name", "").strip()
             registration_number = request.form.get("registration_number")
             designation = request.form.get("designation")
@@ -3017,10 +3288,8 @@ def outpatient_dispense():
             prescriber_name=prescriber_name,
             registration_number=registration_number,
             designation=designation,
-            # Written and dispensed in the same step (walk-in / phoned-in
-            # prescription, no doctor login involved) — mark it dispensed
-            # immediately rather than leaving it in the pending queue.
             status="Dispensed",
+            notes=request.form.get("notes", "").strip() or None,
         )
         db.session.add(prescription)
         db.session.flush()
@@ -3104,8 +3373,40 @@ def inpatient_dispense():
         patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
 
         if not patient:
-            flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
-            return render_template("inpatient/dispense.html", items=items)
+            new_patient_name = request.form.get("new_patient_name", "").strip()
+
+            if not new_patient_name:
+                flash(
+                    f"No patient found with IP/OP number {ip_op_number}. "
+                    "Enter their details below to register and continue dispensing.",
+                    "warning",
+                )
+                return render_template("inpatient/dispense.html", items=items,
+                                        patient_not_found=True, ip_op_number=ip_op_number)
+
+            patient = Patient(
+                name=new_patient_name,
+                ip_op_number=ip_op_number,
+                gender=request.form.get("new_patient_gender") or None,
+                patient_type="Inpatient",
+                age=request.form.get("new_patient_age") or None,
+                weight=request.form.get("new_patient_weight") or None,
+                height=request.form.get("new_patient_height") or None,
+                contact=request.form.get("new_patient_contact") or None,
+                clinic_ward_unit=request.form.get("new_patient_clinic_ward_unit") or None,
+                drug_allergies=request.form.get("new_patient_drug_allergies") or None,
+            )
+            db.session.add(patient)
+            db.session.flush()
+
+            # Registering an inpatient here is itself an admission event --
+            # same as patient_new() does for registry-created inpatients.
+            db.session.add(PatientMovement(
+                patient_id=patient.id,
+                movement_type="Admission",
+                ward_unit=patient.clinic_ward_unit,
+                recorded_by_id=current_user.id,
+            ))
 
         pending = (
             Prescription.query.filter(
@@ -3148,6 +3449,7 @@ def inpatient_dispense():
             registration_number=registration_number,
             designation=designation,
             status="Dispensed",
+            notes=request.form.get("notes", "").strip() or None,
         )
         db.session.add(prescription)
         db.session.flush()

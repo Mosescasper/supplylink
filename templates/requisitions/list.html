@@ -5,7 +5,7 @@
 {% block page_title %}Requisitions (S11){% endblock %}
 
 {% block page_actions %}
-{% if current_user.role in ['pharmacist', 'store_officer'] %}
+{% if current_user.role in ['hod_pharmacy', 'store_officer'] %}
 <a href="{{ url_for('requisition_restock_new') }}" class="btn btn-primary">+ Restock Requisition</a>
 {% endif %}
 <a href="{{ url_for('requisition_new') }}" class="btn">+ New Requisition</a>
@@ -44,7 +44,8 @@
         </thead>
         <tbody>
             {% for req in requisitions %}
-            <tr>
+            {% set is_unread = req.status == "Issued" and not req.received_by_id and req.requested_by_id == current_user.id %}
+            <tr class="{{ 'req-row-unread' if is_unread else '' }}">
                 <td>{{ req.req_number }}</td>
                 <td>{{ req.requisition_type_label }}</td>
                 <td>{{ req.department.name }}</td>
@@ -62,6 +63,9 @@
                     {% if req.is_overdue %}
                         <span class="badge badge-danger">Overdue</span>
                     {% endif %}
+                    {% if is_unread %}
+                        <span class="badge badge-new">NEW</span>
+                    {% endif %}
                 </td>
                 <td>{{ req.requested_by.name if req.requested_by else "—" }}</td>
                 <td>{{ req.created_at.strftime('%d %b %Y') if req.created_at else "—" }}</td>
@@ -77,5 +81,17 @@
         </tbody>
     </table>
 </div>
+
+<style>
+.req-row-unread {
+    background: rgba(45, 212, 238, 0.06);
+    border-left: 3px solid var(--cyan, #2dd4ee);
+}
+.badge-new {
+    color: var(--cyan, #2dd4ee);
+    margin-left: 0.35rem;
+    font-weight: 700;
+}
+</style>
 
 {% endblock %}

@@ -6,6 +6,12 @@
 
 {% block content %}
 
+{% if current_user.email == config.SUPER_ADMIN_EMAIL %}
+<div style="margin-bottom:1rem;">
+    <a href="{{ url_for('user_new_ward_account') }}" class="btn btn-primary">+ Create Ward Account</a>
+</div>
+{% endif %}
+
 <div class="card">
     <table class="table">
         <thead>

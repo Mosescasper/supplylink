@@ -41,7 +41,65 @@
         <div class="form-group">
             <label for="ip_op_number">OP Number</label>
             <input type="text" id="ip_op_number" name="ip_op_number" class="form-control" required
-                   placeholder="e.g. OP-2026-04521">
+                   placeholder="e.g. OP-2026-04521" value="{{ ip_op_number or '' }}" autocomplete="off">
+            <p class="form-hint">
+                If this OP number isn't registered yet, you'll be able to register the patient
+                right here and continue dispensing in the same step.
+            </p>
+            <div id="existing_patient_chip" class="existing-patient-chip" hidden></div>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Prescription Notes <span class="section-hint">(optional)</span></label>
+            <textarea id="notes" name="notes" class="form-control" rows="2"
+                      placeholder="e.g. review in 2 weeks, take with food..."></textarea>
+        </div>
+
+        <div id="new_patient_card" class="new-patient-card" {{ "" if patient_not_found else "hidden" }}>
+            <h3 class="section-heading">⚠ Patient Not Found — Register Now</h3>
+            <p class="form-hint" id="new_patient_hint">
+                No patient found with this OP number. Fill in their details below to register and continue.
+            </p>
+
+            <div class="form-group">
+                <label for="new_patient_name">Patient Name *</label>
+                <input type="text" id="new_patient_name" name="new_patient_name" class="form-control"
+                       {{ "required" if patient_not_found else "" }}>
+            </div>
+            <div class="form-group">
+                <label for="new_patient_gender">Gender</label>
+                <select id="new_patient_gender" name="new_patient_gender" class="form-control">
+                    <option value="">-- Select --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="new_patient_age">Age</label>
+                <input type="number" id="new_patient_age" name="new_patient_age" class="form-control" min="0">
+            </div>
+            <div class="form-group">
+                <label for="new_patient_weight">Weight (kg)</label>
+                <input type="number" id="new_patient_weight" name="new_patient_weight" class="form-control" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+                <label for="new_patient_height">Height (cm)</label>
+                <input type="number" id="new_patient_height" name="new_patient_height" class="form-control" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+                <label for="new_patient_contact">Contact</label>
+                <input type="text" id="new_patient_contact" name="new_patient_contact" class="form-control" placeholder="Phone number">
+            </div>
+            <div class="form-group">
+                <label for="new_patient_clinic_ward_unit">Clinic / Ward / Unit</label>
+                <input type="text" id="new_patient_clinic_ward_unit" name="new_patient_clinic_ward_unit" class="form-control"
+                       placeholder="e.g. OPD Clinic 2">
+            </div>
+            <div class="form-group">
+                <label for="new_patient_drug_allergies">Known Drug Allergies</label>
+                <textarea id="new_patient_drug_allergies" name="new_patient_drug_allergies" class="form-control" rows="2"
+                          placeholder="Leave blank if none"></textarea>
+            </div>
         </div>
 
         <h3 class="section-heading">Prescriber Details</h3>
@@ -219,6 +277,36 @@
 
 .typeahead-add-new:hover {
     background: #222;
+}
+
+.new-patient-card {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 0.35rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.new-patient-card .section-heading {
+    color: #f59e0b;
+    margin-top: 0;
+}
+
+.new-patient-card .form-hint {
+    color: #d9a441;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.existing-patient-chip {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(63, 207, 95, 0.12);
+    border: 1px solid rgba(63, 207, 95, 0.35);
+    border-radius: 0.25rem;
+    color: #3fcf5f;
+    font-size: 0.85rem;
+    display: inline-block;
 }
 
 .prescriber-chip {
@@ -434,6 +522,47 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     clearBtn.addEventListener("click", clearSelection);
+
+    // -----------------------------------------------------------------
+    // Live IP number check
+    // -----------------------------------------------------------------
+    var ipOpInput = document.getElementById("ip_op_number");
+    var newPatientCard = document.getElementById("new_patient_card");
+    var newPatientNameInput = document.getElementById("new_patient_name");
+    var existingChip = document.getElementById("existing_patient_chip");
+
+    function checkPatient() {
+        var value = ipOpInput.value.trim();
+        if (!value) {
+            if (newPatientCard) newPatientCard.hidden = true;
+            if (newPatientNameInput) newPatientNameInput.required = false;
+            if (existingChip) existingChip.hidden = true;
+            return;
+        }
+
+        fetch("/api/patients/check?ip_op_number=" + encodeURIComponent(value))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!newPatientCard || !newPatientNameInput || !existingChip) return;
+
+                if (data.found) {
+                    newPatientCard.hidden = true;
+                    newPatientNameInput.required = false;
+                    existingChip.hidden = false;
+                    existingChip.textContent = "✓ Found: " + data.name + " (" + data.patient_type + ")";
+                } else {
+                    newPatientCard.hidden = false;
+                    newPatientNameInput.required = true;
+                    existingChip.hidden = true;
+                }
+            })
+            .catch(function () { /* fail silently */ });
+    }
+
+    if (ipOpInput) {
+        ipOpInput.addEventListener("blur", checkPatient);
+        if (ipOpInput.value.trim()) checkPatient();
+    }
 });
 </script>
 {% endblock %}

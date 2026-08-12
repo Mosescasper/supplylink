@@ -2,22 +2,28 @@
 
 {% block title %}Prescription — {{ prescription.patient.name }}{% endblock %}
 
+{% block page_title %}Prescription for {{ prescription.patient.name }}{% endblock %}
+
+{% block page_actions %}
+{% if prescription.status != "Dispensed" and current_user.role in ('admin', 'pharmacist') %}
+<a href="{{ url_for('prescription_dispense', prescription_id=prescription.id) }}" class="btn btn-primary">Dispense</a>
+{% endif %}
+<button type="button" class="btn" onclick="window.print()">🖨 Print</button>
+<a href="{{ url_for('patient_detail', patient_id=prescription.patient.id) }}" class="btn">Back to Patient</a>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-    <div class="page-header-content">
-        <h1>Prescription for {{ prescription.patient.name }}</h1>
-        <p class="page-subtitle">
-            <code>{{ prescription.patient.ip_op_number }}</code>
-            · Dr. {{ prescription.prescriber_name }}{% if prescription.designation %} ({{ prescription.designation }}){% endif %}
-            · {{ prescription.date.strftime("%d %b %Y") if prescription.date else "—" }}
-        </p>
-    </div>
-    <div class="page-header-actions">
-        {% if prescription.status != "Dispensed" and current_user.role in ('admin', 'pharmacist') %}
-        <a href="{{ url_for('prescription_dispense', prescription_id=prescription.id) }}" class="btn btn-primary">Dispense</a>
-        {% endif %}
-        <a href="{{ url_for('patient_detail', patient_id=prescription.patient.id) }}" class="btn">Back to Patient</a>
-    </div>
+<p class="page-subtitle">
+    <code>{{ prescription.patient.ip_op_number }}</code>
+    · Dr. {{ prescription.prescriber_name }}{% if prescription.designation %} ({{ prescription.designation }}){% endif %}
+    · {{ prescription.date.strftime("%d %b %Y") if prescription.date else "—" }}
+</p>
+
+<div class="print-letterhead">
+    <h2>{{ hospital_name }}</h2>
+    <p>{{ hospital_address }}</p>
+    <p>{{ hospital_phone_1 }}{% if hospital_phone_2 %} · {{ hospital_phone_2 }}{% endif %}</p>
+    <hr>
 </div>
 
 <div class="card">
@@ -33,6 +39,12 @@
         <span class="reg-number">Reg. No. {{ prescription.registration_number }}</span>
         {% endif %}
     </div>
+
+    {% if prescription.notes %}
+    <div class="rx-notes">
+        <strong>Notes:</strong> {{ prescription.notes }}
+    </div>
+    {% endif %}
 
     <table class="table">
         <thead>
@@ -66,37 +78,13 @@
 </div>
 
 <style>
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    gap: 1rem;
-}
-
-.page-header-content h1 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.7rem;
-}
-
 .page-subtitle {
-    color: #999;
-    margin: 0;
+    color: #8a8a95;
+    margin: -0.75rem 0 1.5rem 0;
     font-size: 0.9rem;
 }
 
-.page-header-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-.card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-}
+.print-letterhead { display: none; }
 
 .status-row {
     display: flex;
@@ -105,87 +93,54 @@
     margin-bottom: 1.25rem;
 }
 
-.reg-number {
-    color: #888;
-    font-size: 0.85rem;
-}
-
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.badge-success {
-    background: rgba(63, 207, 95, 0.15);
-    color: #3fcf5f;
-}
-
-.badge-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-}
-
-.badge-pending {
-    background: rgba(148, 163, 184, 0.15);
-    color: #94a3b8;
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
+.rx-notes {
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.35rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
     color: #ccc;
+    white-space: pre-wrap;
 }
 
-.table th {
-    padding: 0.75rem;
-    text-align: left;
-    font-weight: 600;
-    color: #3fcf5f;
-    border-bottom: 2px solid #333;
-    font-size: 0.82rem;
-}
-
-.table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #292929;
-    font-size: 0.9rem;
+.reg-number {
+    color: #8a8a95;
+    font-size: 0.85rem;
 }
 
 .line-done {
-    color: #3fcf5f;
+    color: #2ee6a8;
     margin-left: 0.4rem;
 }
 
-.btn {
-    padding: 0.55rem 1.1rem;
-    border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    font-size: 0.88rem;
-    text-decoration: none;
-    display: inline-block;
-    background: #333;
-    color: #ccc;
-}
-
-.btn-primary {
-    background: #3fcf5f;
-    color: #0a0f0c;
-}
-
-.btn:hover {
-    opacity: 0.85;
-}
-
 code {
-    background: #222;
+    background: #0c0c10;
     padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
     font-size: 0.85rem;
+}
+
+@media print {
+    .sidebar,
+    .page-header-actions,
+    .flash { display: none !important; }
+
+    .main { margin-left: 0 !important; padding: 0 !important; }
+
+    .print-letterhead {
+        display: block;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        color: #000;
+    }
+    .print-letterhead h2 { margin: 0; }
+    .print-letterhead p { margin: 0.2rem 0; font-size: 0.85rem; }
+
+    body, .card { background: #fff !important; color: #000 !important; }
+    .table th, .table td { color: #000 !important; border-color: #ccc !important; }
+    .badge { border: 1px solid #999; background: none !important; color: #000 !important; box-shadow: none !important; }
 }
 </style>
 {% endblock %}
