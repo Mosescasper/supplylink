@@ -693,6 +693,9 @@ class Prescription(db.Model):
     # Dispensed", or "Dispensed" (fully given out). Walk-in dispense routes
     # set this straight to "Dispensed" since they write and dispense at once.
     status = db.Column(db.String(30), nullable=False, default="Pending")
+    # Free-text notes entered at dispense time — optional, e.g. instructions,
+    # follow-up date, general remarks. Not tied to any specific medicine line.
+    notes = db.Column(db.Text)
 
     patient = db.relationship("Patient", back_populates="prescriptions")
     prescriber = db.relationship("Prescriber")

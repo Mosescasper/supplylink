@@ -35,21 +35,27 @@
         <div class="form-row">
             <label for="ip_op_number">IP Number</label>
             <input type="text" id="ip_op_number" name="ip_op_number" required
-                   placeholder="e.g. IP-2026-00042" autofocus value="{{ ip_op_number or '' }}">
+                   placeholder="e.g. IP-2026-00042" autofocus autocomplete="off" value="{{ ip_op_number or '' }}">
             <p class="field-hint">
                 If this IP number isn't registered yet, you'll be able to register the patient
                 right here and continue — it also logs them as admitted.
             </p>
+            <div id="existing_patient_chip" class="existing-patient-chip" hidden></div>
         </div>
 
-        {% if patient_not_found %}
-        <div class="new-patient-card">
+        <div class="form-row">
+            <label for="notes">Prescription Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="2"
+                      placeholder="e.g. review in 2 weeks, take with food..."></textarea>
+        </div>
+
+        <div id="new_patient_card" class="new-patient-card" {{ "" if patient_not_found else "hidden" }}>
             <h3>⚠ Patient Not Found — Register Now</h3>
-            <p class="field-hint">No patient found with IP number <strong>{{ ip_op_number }}</strong>. Fill in their details to register and continue.</p>
+            <p class="field-hint">No patient found with this IP number. Fill in their details to register and continue.</p>
 
             <div class="form-row">
                 <label for="new_patient_name">Patient Name *</label>
-                <input type="text" id="new_patient_name" name="new_patient_name" required>
+                <input type="text" id="new_patient_name" name="new_patient_name" {{ "required" if patient_not_found else "" }}>
             </div>
             <div class="form-row">
                 <label for="new_patient_gender">Gender</label>
@@ -86,7 +92,6 @@
                           placeholder="Leave blank if none"></textarea>
             </div>
         </div>
-        {% endif %}
     </div>
 
     <div class="form-section">
@@ -272,6 +277,17 @@
     color: #f59e0b;
     margin-top: 0;
 }
+
+.existing-patient-chip {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(63, 207, 95, 0.12);
+    border: 1px solid rgba(63, 207, 95, 0.35);
+    border-radius: 0.25rem;
+    color: #3fcf5f;
+    font-size: 0.85rem;
+    display: inline-block;
+}
 </style>
 
 <script>
@@ -455,6 +471,43 @@
     });
 
     clearBtn.addEventListener("click", clearSelection);
+
+    // -----------------------------------------------------------------
+    // Live IP number check
+    // -----------------------------------------------------------------
+    var ipOpInput = document.getElementById("ip_op_number");
+    var newPatientCard = document.getElementById("new_patient_card");
+    var newPatientNameInput = document.getElementById("new_patient_name");
+    var existingChip = document.getElementById("existing_patient_chip");
+
+    function checkPatient() {
+        var value = ipOpInput.value.trim();
+        if (!value) {
+            newPatientCard.hidden = true;
+            newPatientNameInput.required = false;
+            existingChip.hidden = true;
+            return;
+        }
+
+        fetch("/api/patients/check?ip_op_number=" + encodeURIComponent(value))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.found) {
+                    newPatientCard.hidden = true;
+                    newPatientNameInput.required = false;
+                    existingChip.hidden = false;
+                    existingChip.textContent = "✓ Found: " + data.name + " (" + data.patient_type + ")";
+                } else {
+                    newPatientCard.hidden = false;
+                    newPatientNameInput.required = true;
+                    existingChip.hidden = true;
+                }
+            })
+            .catch(function () { /* fail silently */ });
+    }
+
+    ipOpInput.addEventListener("blur", checkPatient);
+    if (ipOpInput.value.trim()) checkPatient();
 })();
 </script>
 {% endblock %}

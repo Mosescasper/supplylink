@@ -38,6 +38,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
+migrate = Migrate(app, db)
 login_manager.init_app(app)
 s3_client = boto3.client(
     "s3",
@@ -2424,6 +2425,27 @@ def api_patient_search():
         for p in patients
     ])
 
+@app.route("/api/patients/check")
+@login_required
+def api_patient_check():
+    """Live check used by the dispense forms as the pharmacist types/leaves
+    the OP/IP number field — lets the 'Patient Not Found' section appear
+    instantly instead of requiring a full form submission to find out."""
+    ip_op_number = request.args.get("ip_op_number", "").strip()
+    if not ip_op_number:
+        return jsonify({"found": False})
+
+    patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
+    if not patient:
+        return jsonify({"found": False})
+
+    return jsonify({
+        "found": True,
+        "name": patient.name,
+        "patient_type": patient.patient_type,
+        "clinic_ward_unit": patient.clinic_ward_unit or "",
+    })
+
 @app.route("/api/requisitions/item-stats")
 @login_required
 def api_requisition_item_stats():
@@ -3267,6 +3289,7 @@ def outpatient_dispense():
             registration_number=registration_number,
             designation=designation,
             status="Dispensed",
+            notes=request.form.get("notes", "").strip() or None,
         )
         db.session.add(prescription)
         db.session.flush()
@@ -3426,6 +3449,7 @@ def inpatient_dispense():
             registration_number=registration_number,
             designation=designation,
             status="Dispensed",
+            notes=request.form.get("notes", "").strip() or None,
         )
         db.session.add(prescription)
         db.session.flush()
