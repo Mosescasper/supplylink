@@ -3193,8 +3193,35 @@ def outpatient_dispense():
         patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
 
         if not patient:
-            flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
-            return render_template("outpatient/dispense.html", items=items)
+            # No registry account for this pharmacist -- rather than blocking
+            # dispensing outright, let them register the patient inline.
+            new_patient_name = request.form.get("new_patient_name", "").strip()
+
+            if not new_patient_name:
+                # First submission with just the IP/OP number -- show the
+                # inline registration fields instead of the "blocked" message.
+                flash(
+                    f"No patient found with IP/OP number {ip_op_number}. "
+                    "Enter their details below to register and continue dispensing.",
+                    "warning",
+                )
+                return render_template("outpatient/dispense.html", items=items,
+                                        patient_not_found=True, ip_op_number=ip_op_number)
+
+            patient = Patient(
+                name=new_patient_name,
+                ip_op_number=ip_op_number,
+                gender=request.form.get("new_patient_gender") or None,
+                patient_type="Outpatient",
+                age=request.form.get("new_patient_age") or None,
+                weight=request.form.get("new_patient_weight") or None,
+                height=request.form.get("new_patient_height") or None,
+                contact=request.form.get("new_patient_contact") or None,
+                clinic_ward_unit=request.form.get("new_patient_clinic_ward_unit") or None,
+                drug_allergies=request.form.get("new_patient_drug_allergies") or None,
+            )
+            db.session.add(patient)
+            db.session.flush()
 
         # If a doctor has already written a prescription for this patient
         # that's waiting to be dispensed, send the pharmacist there instead
@@ -3225,8 +3252,6 @@ def outpatient_dispense():
             registration_number = prescriber.registration_number
             designation = prescriber.designation
         else:
-            # Fallback: no prescriber_id came through (e.g. JS disabled) —
-            # keep accepting the typed field so the form still works.
             prescriber_name = request.form.get("prescriber_name", "").strip()
             registration_number = request.form.get("registration_number")
             designation = request.form.get("designation")
@@ -3241,9 +3266,6 @@ def outpatient_dispense():
             prescriber_name=prescriber_name,
             registration_number=registration_number,
             designation=designation,
-            # Written and dispensed in the same step (walk-in / phoned-in
-            # prescription, no doctor login involved) — mark it dispensed
-            # immediately rather than leaving it in the pending queue.
             status="Dispensed",
         )
         db.session.add(prescription)
@@ -3328,8 +3350,40 @@ def inpatient_dispense():
         patient = Patient.query.filter_by(ip_op_number=ip_op_number).first()
 
         if not patient:
-            flash("Patient is not registered in the hospital system. Dispensing blocked.", "danger")
-            return render_template("inpatient/dispense.html", items=items)
+            new_patient_name = request.form.get("new_patient_name", "").strip()
+
+            if not new_patient_name:
+                flash(
+                    f"No patient found with IP/OP number {ip_op_number}. "
+                    "Enter their details below to register and continue dispensing.",
+                    "warning",
+                )
+                return render_template("inpatient/dispense.html", items=items,
+                                        patient_not_found=True, ip_op_number=ip_op_number)
+
+            patient = Patient(
+                name=new_patient_name,
+                ip_op_number=ip_op_number,
+                gender=request.form.get("new_patient_gender") or None,
+                patient_type="Inpatient",
+                age=request.form.get("new_patient_age") or None,
+                weight=request.form.get("new_patient_weight") or None,
+                height=request.form.get("new_patient_height") or None,
+                contact=request.form.get("new_patient_contact") or None,
+                clinic_ward_unit=request.form.get("new_patient_clinic_ward_unit") or None,
+                drug_allergies=request.form.get("new_patient_drug_allergies") or None,
+            )
+            db.session.add(patient)
+            db.session.flush()
+
+            # Registering an inpatient here is itself an admission event --
+            # same as patient_new() does for registry-created inpatients.
+            db.session.add(PatientMovement(
+                patient_id=patient.id,
+                movement_type="Admission",
+                ward_unit=patient.clinic_ward_unit,
+                recorded_by_id=current_user.id,
+            ))
 
         pending = (
             Prescription.query.filter(

@@ -35,9 +35,58 @@
         <div class="form-row">
             <label for="ip_op_number">IP Number</label>
             <input type="text" id="ip_op_number" name="ip_op_number" required
-                   placeholder="e.g. IP-2026-00042" autofocus>
-            <p class="field-hint">Patient must already be registered in the hospital system. Dispensing is blocked otherwise.</p>
+                   placeholder="e.g. IP-2026-00042" autofocus value="{{ ip_op_number or '' }}">
+            <p class="field-hint">
+                If this IP number isn't registered yet, you'll be able to register the patient
+                right here and continue — it also logs them as admitted.
+            </p>
         </div>
+
+        {% if patient_not_found %}
+        <div class="new-patient-card">
+            <h3>⚠ Patient Not Found — Register Now</h3>
+            <p class="field-hint">No patient found with IP number <strong>{{ ip_op_number }}</strong>. Fill in their details to register and continue.</p>
+
+            <div class="form-row">
+                <label for="new_patient_name">Patient Name *</label>
+                <input type="text" id="new_patient_name" name="new_patient_name" required>
+            </div>
+            <div class="form-row">
+                <label for="new_patient_gender">Gender</label>
+                <select id="new_patient_gender" name="new_patient_gender">
+                    <option value="">-- Select --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="new_patient_age">Age</label>
+                <input type="number" id="new_patient_age" name="new_patient_age" min="0">
+            </div>
+            <div class="form-row">
+                <label for="new_patient_weight">Weight (kg)</label>
+                <input type="number" id="new_patient_weight" name="new_patient_weight" step="0.1" min="0">
+            </div>
+            <div class="form-row">
+                <label for="new_patient_height">Height (cm)</label>
+                <input type="number" id="new_patient_height" name="new_patient_height" step="0.1" min="0">
+            </div>
+            <div class="form-row">
+                <label for="new_patient_contact">Contact</label>
+                <input type="text" id="new_patient_contact" name="new_patient_contact" placeholder="Phone number">
+            </div>
+            <div class="form-row">
+                <label for="new_patient_clinic_ward_unit">Ward / Unit *</label>
+                <input type="text" id="new_patient_clinic_ward_unit" name="new_patient_clinic_ward_unit"
+                       placeholder="e.g. ICU, Maternity Ward">
+            </div>
+            <div class="form-row">
+                <label for="new_patient_drug_allergies">Known Drug Allergies</label>
+                <textarea id="new_patient_drug_allergies" name="new_patient_drug_allergies" rows="2"
+                          placeholder="Leave blank if none"></textarea>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="form-section">
@@ -209,6 +258,19 @@
     font-size: 1rem;
     line-height: 1;
     padding: 0;
+}
+
+.new-patient-card {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 0.35rem;
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+}
+
+.new-patient-card h3 {
+    color: #f59e0b;
+    margin-top: 0;
 }
 </style>
 
