@@ -1064,19 +1064,18 @@ def inventory_new():
         db.session.add(item)
         db.session.flush()  # assigns item.id before the batch references it
 
-        # Optional initial stock — batch number / expiry date / quantity are
-        # all-or-nothing: only create a batch if these were actually filled
-        # in, so a plain catalog-only item can still be added without one.
+        # Store officer receives straight into Drug Store (her actual
+        # location); admin/supply_chain keep the original behaviour of
+        # landing new stock at Supply Chain Store first.
+        initial_location = "Drug Store" if current_user.role == "store_officer" else "Supply Chain Store"
+
         batch_number = request.form.get("batch_number", "").strip()
         expiry_date_str = request.form.get("expiry_date", "").strip()
         initial_quantity = request.form.get("initial_quantity", "").strip()
 
         if batch_number and expiry_date_str and initial_quantity:
+            # Real initial stock was filled in — create a real batch as before.
             quantity = float(initial_quantity)
-            # Store officer receives straight into Drug Store (her actual
-            # location); admin/supply_chain keep the original behaviour of
-            # landing new stock at Supply Chain Store first.
-            initial_location = "Drug Store" if current_user.role == "store_officer" else "Supply Chain Store"
 
             received_date_str = request.form.get("received_date", "").strip()
             received_date_val = (
@@ -1102,6 +1101,24 @@ def inventory_new():
 
             log_movement(item, batch, "receipt", quantity, to_location=initial_location,
                          reference=request.form.get("d_note_number") or "Initial stock on item creation")
+        else:
+            # No initial stock given -- auto-allocate a zero-quantity
+            # placeholder batch so the item still shows up in this
+            # location's Total Items count right away, ready for real
+            # stock to be received into later. Same convention as
+            # backfill_zero_stock_batches.py: batch number tied to SKU
+            # (traceable, not random), far-future expiry so it never
+            # falsely triggers a near-expiry alert.
+            placeholder_batch = Batch(
+                item_id=item.id,
+                batch_number=f"PENDING-{item.sku}",
+                expiry_date=date(2099, 12, 31),
+                quantity_received=0,
+                quantity_remaining=0,
+                location=initial_location,
+            )
+            db.session.add(placeholder_batch)
+            db.session.flush()
 
         db.session.commit()
         flash(f"Item {item.name} added.", "success")
