@@ -145,19 +145,26 @@ def dispensing_required(view_fn):
 
 
 def super_admin_required(view_fn):
-    """Restricts a route to exactly one email, not just 'any admin'.
-    Used only for account creation -- so even if someone else somehow got
-    an admin account, they still couldn't create more accounts."""
+    """Restricts a view to the super admin, plus any additional emails
+    listed in ACCOUNT_CREATOR_EMAILS (config/.env only -- no code change
+    needed to add or remove someone from this list). Unlike the super
+    admin, those additional emails can still be deleted or force-logged-out
+    normally -- user_delete/user_force_logout/user_reset_password below
+    only special-case SUPER_ADMIN_EMAIL specifically, not this list."""
     @wraps(view_fn)
     def wrapped(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for("login"))
-        if current_user.email.lower() != Config.SUPER_ADMIN_EMAIL.lower():
+        email = current_user.email.lower()
+        allowed = (
+            email == Config.SUPER_ADMIN_EMAIL.lower()
+            or email in Config.ACCOUNT_CREATOR_EMAILS
+        )
+        if not allowed:
             flash("Only the system administrator can create accounts.", "danger")
             return redirect(url_for("dashboard"))
         return view_fn(*args, **kwargs)
     return wrapped
-
 
 def next_reference(prefix, model, field):
     """Generate a simple sequential reference like S11-000123 / PO-000045."""
