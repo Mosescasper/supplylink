@@ -126,7 +126,7 @@ class Item(db.Model):
     name = db.Column(db.String(500), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"))
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
-    unit_of_issue = db.Column(db.String(50), nullable=False, default="Units")
+    unit_of_issue = db.Column(db.String(255), nullable=False, default="Units")
     unit_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     avg_monthly_consumption = db.Column(db.Numeric(12, 2), default=0)
     reorder_level = db.Column(db.Numeric(12, 2), default=0)
