@@ -44,6 +44,15 @@
       <div class="kpi-sub">SKUs tracked</div>
     </a>
 
+    <a href="{{ url_for('inventory_list') }}" class="kpi-card kpi-card--green">
+      <div class="kpi-top">
+        <span class="kpi-label">In Stock</span>
+        <span class="kpi-dot"></span>
+      </div>
+      <div class="kpi-value">{{ kpis.items_in_stock }}</div>
+      <div class="kpi-sub">currently &gt; 0 quantity</div>
+    </a>
+
     <a href="{{ url_for('expiry_alerts') }}" class="kpi-card kpi-card--red">
       <div class="kpi-top">
         <span class="kpi-label">Near Expiry</span>

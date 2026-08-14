@@ -743,6 +743,7 @@ def dashboard():
 
     kpis = {
         "total_items": len(scoped_items),
+        "items_in_stock": len([1 for item in scoped_items if _scoped_quantity(item, scope_locations) > 0]),
         "near_expiry_count": len(near_expiry_batches),
         "low_stock_count": len(low_stock_items),
         "open_purchase_orders": PurchaseOrder.query.filter(
