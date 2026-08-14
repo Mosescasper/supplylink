@@ -48,3 +48,10 @@ class Config:
     R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
     R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "supplylink-documents")
     R2_REGION = os.environ.get("R2_REGION", "us-east-005")
+    
+    # Set to False to freeze all dispensing/prescription functionality --
+    # this system currently only tracks drug flow up to Holding; actual
+    # dispensing to patients happens in a separate system. Flip back to
+    # True via env var (DISPENSING_ENABLED=true) if that ever changes,
+    # no code edit needed.
+    DISPENSING_ENABLED = os.environ.get("DISPENSING_ENABLED", "false").lower() == "true"

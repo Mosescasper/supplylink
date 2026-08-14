@@ -101,7 +101,9 @@
                 <th>Qty Received</th>
                 <th>Qty Remaining</th>
                 <th>Status</th>
-                <th></th>
+                {% if current_user.role in ('admin', 'supply_chain', 'store_officer') %}
+                <th class="text-right">Actions</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -121,15 +123,15 @@
                     <span class="badge badge-success">OK</span>
                     {% endif %}
                 </td>
-                <td>
-                    {% if batch.quantity_remaining and batch.quantity_remaining > 0 %}
-                    <a href="{{ url_for('batch_transfer', batch_id=batch.id) }}" class="btn btn-sm">Transfer</a>
-                    {% endif %}
+                {% if current_user.role in ('admin', 'supply_chain', 'store_officer') %}
+                <td class="text-right">
+                    <a href="{{ url_for('batch_edit', batch_id=batch.id) }}" class="btn btn-sm">Edit</a>
                 </td>
+                {% endif %}
             </tr>
             {% else %}
             <tr>
-                <td colspan="7" class="empty-state">No batches recorded for this item yet.</td>
+                <td colspan="{{ 8 if current_user.role in ('admin', 'supply_chain', 'store_officer') else 7 }}" class="empty-state">No batches recorded for this item yet.</td>
             </tr>
             {% endfor %}
         </tbody>

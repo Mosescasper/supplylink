@@ -7,14 +7,14 @@
 {% block page_actions %}
 <a href="{{ url_for('requisition_list') }}" class="btn">Back to Requisitions</a>
 
-{% if can_action and req.status == "Pending" %}
+{% if can_approve and req.status == "Pending" %}
     <form method="POST" action="{{ url_for('requisition_approve', req_id=req.id) }}" class="inline-form">
         <button type="submit" class="btn btn-primary">Approve</button>
     </form>
     <form method="POST" action="{{ url_for('requisition_reject', req_id=req.id) }}" class="inline-form">
         <button type="submit" class="btn btn-danger">Reject</button>
     </form>
-{% elif can_action and req.status == "Approved" %}
+{% elif can_issue and req.status == "Approved" %}
     <span class="form-hint" style="margin:0;">Edit quantities to issue in the table below, then confirm.</span>
 {% elif req.status == "Issued" and not req.received_by_id and current_user.role in ('admin', 'pharmacist') %}
     <form method="POST" action="{{ url_for('requisition_receive', req_id=req.id) }}" class="inline-form">
@@ -93,7 +93,7 @@
 
 <div class="card">
     <h3 class="section-heading">Requisition Lines</h3>
-    {% if can_action and req.status == "Approved" %}
+    {% if can_issue and req.status == "Approved" %}
     <form method="POST" action="{{ url_for('requisition_issue', req_id=req.id) }}">
     {% endif %}
     <table class="table">
@@ -103,7 +103,7 @@
                 <th>Item</th>
                 <th>Unit of Issue</th>
                 <th>Qty Required</th>
-                <th>{% if can_action and req.status == "Approved" %}Qty to Issue{% else %}Qty Issued{% endif %}</th>
+                <th>{% if can_issue and req.status == "Approved" %}Qty to Issue{% else %}Qty Issued{% endif %}</th>
                 <th>Value ({{ currency }})</th>
                 <th>Remarks / Purpose</th>
             </tr>
@@ -116,7 +116,7 @@
                 <td>{{ line.item.unit_of_issue }}</td>
                 <td>{{ line.quantity_required }}</td>
                 <td>
-                    {% if can_action and req.status == "Approved" %}
+                    {% if can_issue and req.status == "Approved" %}
                     <input type="number" step="0.01" min="0" max="{{ line.quantity_required }}"
                            name="issue_qty_{{ line.id }}" value="{{ line.quantity_required }}"
                            class="form-control" style="max-width:110px; margin-bottom:0;">
@@ -134,7 +134,7 @@
             {% endfor %}
         </tbody>
     </table>
-    {% if can_action and req.status == "Approved" %}
+    {% if can_issue and req.status == "Approved" %}
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Confirm and Issue Stock</button>
         </div>

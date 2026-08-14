@@ -12,7 +12,7 @@
 <div class="card">
     <p class="form-hint">
         Record what {{ po.supplier.name }} actually delivered against this order —
-        the delivery note number, date, and per-item batch, expiry, quantity, and price.
+        the delivery note number, date, and per-item batch, expiry, quantity, price, LPO number, and status.
         Confirming will add the stock to Drug Store and mark the order as Received.
     </p>
 
@@ -42,6 +42,8 @@
                     <th>Expiry Date</th>
                     <th>Qty Delivered</th>
                     <th>Unit Cost (KES)</th>
+                    <th>LPO No.</th>
+                    <th>Status</th>
                     <th></th>
                 </tr>
             </thead>
@@ -66,6 +68,16 @@
                     </td>
                     <td>
                         <input type="number" name="unit_cost[]" class="form-control" step="0.01" min="0">
+                    </td>
+                    <td>
+                        <input type="text" name="lpo_number[]" class="form-control" placeholder="e.g. 000778">
+                    </td>
+                    <td>
+                        <select name="delivery_status[]" class="form-control">
+                            <option value="Complete" selected>Complete</option>
+                            <option value="Partial">Partial</option>
+                            <option value="Pending">Pending</option>
+                        </select>
                     </td>
                     <td>
                         <button type="button" class="btn btn-sm remove-line-btn">Remove</button>
@@ -105,6 +117,16 @@
         </td>
         <td>
             <input type="number" name="unit_cost[]" class="form-control" step="0.01" min="0">
+        </td>
+        <td>
+            <input type="text" name="lpo_number[]" class="form-control" placeholder="e.g. 000778">
+        </td>
+        <td>
+            <select name="delivery_status[]" class="form-control">
+                <option value="Complete" selected>Complete</option>
+                <option value="Partial">Partial</option>
+                <option value="Pending">Pending</option>
+            </select>
         </td>
         <td>
             <button type="button" class="btn btn-sm remove-line-btn">Remove</button>

@@ -56,6 +56,8 @@
                 <th>Expiry Date</th>
                 <th>Qty Delivered</th>
                 <th>Unit Cost (KES)</th>
+                <th>LPO No.</th>
+                <th>Status</th>
                 <th>Line Total (KES)</th>
             </tr>
         </thead>
@@ -67,11 +69,13 @@
                 <td>{{ line.expiry_date.strftime("%d %b %Y") if line.expiry_date else "—" }}</td>
                 <td>{{ line.quantity_delivered }}</td>
                 <td>{{ "%.2f"|format(line.unit_price) }}</td>
+                <td>{{ line.lpo_number or "—" }}</td>
+                <td>{{ line.delivery_status or "Complete" }}</td>
                 <td>{{ "%.2f"|format(line.line_total) }}</td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="empty-state">No line items recorded.</td>
+                <td colspan="8" class="empty-state">No line items recorded.</td>
             </tr>
             {% endfor %}
         </tbody>

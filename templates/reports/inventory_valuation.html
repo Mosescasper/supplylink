@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Inventory Valuation Report{% endblock %}
+{% block page_title %}Inventory Valuation Report{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('reports_index') }}" class="btn btn-secondary">Back to Reports</a>
+<a href="{{ url_for('report_inventory_valuation_export', start=start_date.isoformat(), end=end_date.isoformat()) }}" class="btn btn-primary">Export CSV</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if scope_locations %}
+  <p class="form-hint" style="margin-bottom:16px;">
+    Showing values for: <strong>{{ scope_locations | join(', ') }}</strong> only.
+  </p>
+  {% endif %}
+
+  <form method="get" class="reports-toolbar" style="margin-bottom:20px;">
+    <label>
+      From
+      <input type="date" name="start" value="{{ start_date.isoformat() }}">
+    </label>
+    <label>
+      To
+      <input type="date" name="end" value="{{ end_date.isoformat() }}">
+    </label>
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </form>
+
+  <div style="overflow-x:auto;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Item</th>
+          <th>Qty Issued</th>
+          <th>Qty Remaining</th>
+          <th>Unit Cost ({{ currency }})</th>
+          <th>Remaining Value ({{ currency }})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.sku }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ "%.2f"|format(row.issued) }}</td>
+          <td>{{ "%.2f"|format(row.remaining) }}</td>
+          <td>{{ "%.2f"|format(row.unit_cost or 0) }}</td>
+          <td>{{ "%.2f"|format(row.remaining_value) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty-state">No valuation rows found for this period/scope.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
