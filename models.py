@@ -108,6 +108,7 @@ class Supplier(db.Model):
     items = db.relationship("Item", back_populates="supplier")
     purchase_orders = db.relationship("PurchaseOrder", back_populates="supplier")
     deliveries = db.relationship("Delivery", back_populates="supplier")
+    batches = db.relationship("Batch", back_populates="supplier")
     catalog_items = db.relationship("SupplierItem", back_populates="supplier",
                                      cascade="all, delete-orphan",
                                      order_by="SupplierItem.id")
@@ -179,8 +180,13 @@ class Batch(db.Model):
     quantity_remaining = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     location = db.Column(db.String(50), nullable=False, default="Drug Store")
     received_date = db.Column(db.Date, default=date.today)
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
+    d_note_number = db.Column(db.String(100))
+    lpo_number = db.Column(db.String(50))
+    delivery_status = db.Column(db.String(30), default="Complete")
 
     item = db.relationship("Item", back_populates="batches")
+    supplier = db.relationship("Supplier", back_populates="batches")
     movements = db.relationship("StockMovement", back_populates="batch")
 
     def is_near_expiry(self, months=6):
@@ -308,6 +314,8 @@ class DeliveryLineItem(db.Model):
     expiry_date = db.Column(db.Date, nullable=False)
     quantity_delivered = db.Column(db.Numeric(12, 2), nullable=False)
     unit_price = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    lpo_number = db.Column(db.String(50))
+    delivery_status = db.Column(db.String(30), default="Complete")
 
     delivery = db.relationship("Delivery", back_populates="lines")
     item = db.relationship("Item")
