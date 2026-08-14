@@ -42,6 +42,18 @@ class Config:
     # Only this email can create user accounts (register/ward-account routes)
     SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "mm5134065@gmail.com")
 
+    # Only this email can create user accounts (register/ward-account routes)
+    SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "mm5134065@gmail.com")
+    # Additional email(s) also allowed to create accounts, without having
+    # the super admin's special protections (they CAN be deleted or
+    # force-logged-out normally, unlike SUPER_ADMIN_EMAIL). Comma-separate
+    # for more than one, e.g. "person1@x.com,person2@x.com".
+    ACCOUNT_CREATOR_EMAILS = [
+        e.strip().lower()
+        for e in os.environ.get("ACCOUNT_CREATOR_EMAILS", "").split(",")
+        if e.strip()
+    ]
+
     # Cloudflare R2 / Backblaze B2 (S3-compatible) storage for patient documents
     R2_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL")
     R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")

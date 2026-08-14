@@ -306,7 +306,7 @@
       {% if current_user.role == 'admin' %}
       <a class="nav-link {{ 'active' if request.endpoint and 'user_' in request.endpoint else '' }}" href="{{ url_for('user_list') }}"><span class="ic">👤</span> Users</a>
       {% endif %}
-      {% if current_user.email == config.SUPER_ADMIN_EMAIL %}
+      {% if current_user.email.lower() == config.SUPER_ADMIN_EMAIL.lower() or current_user.email.lower() in config.ACCOUNT_CREATOR_EMAILS %}
       <a class="nav-link {{ 'active' if request.endpoint == 'register' else '' }}" href="{{ url_for('register') }}"><span class="ic">➕</span> Create Account</a>
       {% endif %}
     </nav>
