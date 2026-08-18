@@ -20,8 +20,12 @@
 
         <div class="form-group">
             <label for="name">Item Name</label>
-            <input type="text" id="name" name="name" class="form-control"
+            <input type="text" id="name" name="name" class="form-control" autocomplete="off"
                    value="{{ item.name if item else '' }}" required>
+            <div id="item_name_results" class="typeahead-results" hidden></div>
+            {% if not item %}
+            <p class="form-hint">As you type, similar existing items will show below to help you avoid duplicates.</p>
+            {% endif %}
         </div>
 
         <div class="form-group">
@@ -151,4 +155,89 @@
 
     </form>
 </div>
+
+<style>
+.typeahead-results {
+    position: relative;
+    margin-top: 0.4rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.25rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.typeahead-result {
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+    border-bottom: 1px solid #262626;
+    font-size: 0.88rem;
+}
+.typeahead-result:last-child { border-bottom: none; }
+.typeahead-result:hover { background: #222; }
+.typeahead-result-name { color: #ccc; font-weight: 500; }
+.typeahead-result-meta { color: #888; font-size: 0.78rem; margin-top: 0.15rem; }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var nameInput = document.getElementById("name");
+    var resultsBox = document.getElementById("item_name_results");
+    if (!nameInput || !resultsBox) return;
+
+    var debounceTimer = null;
+
+    function hideResults() {
+        resultsBox.hidden = true;
+        resultsBox.innerHTML = "";
+    }
+
+    nameInput.addEventListener("input", function () {
+        var query = nameInput.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            hideResults();
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            fetch("/api/items/search?q=" + encodeURIComponent(query))
+                .then(function (r) { return r.json(); })
+                .then(function (items) {
+                    resultsBox.innerHTML = "";
+                    if (items.length === 0) {
+                        hideResults();
+                        return;
+                    }
+                    items.forEach(function (it) {
+                        var row = document.createElement("div");
+                        row.className = "typeahead-result";
+
+                        var nameEl = document.createElement("div");
+                        nameEl.className = "typeahead-result-name";
+                        nameEl.textContent = it.name;
+                        row.appendChild(nameEl);
+
+                        var metaEl = document.createElement("div");
+                        metaEl.className = "typeahead-result-meta";
+                        metaEl.textContent = "SKU: " + it.sku + " · On hand: " + it.quantity_on_hand;
+                        row.appendChild(metaEl);
+
+                        row.addEventListener("click", function () {
+                            window.open("/inventory/" + it.id, "_blank");
+                        });
+
+                        resultsBox.appendChild(row);
+                    });
+                    resultsBox.hidden = false;
+                })
+                .catch(function () { hideResults(); });
+        }, 250);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (e.target !== nameInput && !resultsBox.contains(e.target)) hideResults();
+    });
+});
+</script>
 {% endblock %}

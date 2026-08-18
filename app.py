@@ -1128,7 +1128,7 @@ def inventory_new():
 
 @app.route("/inventory/<int:item_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "supply_chain")
+@role_required("admin", "supply_chain", "store_officer")
 def inventory_edit(item_id):
     item = Item.query.get_or_404(item_id)
     categories = Category.query.order_by(Category.name).all()
@@ -1558,7 +1558,7 @@ def supplier_list():
 
 @app.route("/suppliers/new", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "supply_chain")
+@role_required("admin", "supply_chain", "store_officer")
 def supplier_new():
     if request.method == "POST":
         supplier = Supplier(
@@ -1612,7 +1612,7 @@ def supplier_detail(supplier_id):
 
 @app.route("/suppliers/<int:supplier_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "supply_chain")
+@role_required("admin", "supply_chain", "store_officer")
 def supplier_edit(supplier_id):
     supplier = Supplier.query.get_or_404(supplier_id)
 
@@ -2580,6 +2580,30 @@ def api_patient_search():
             "clinic_ward_unit": p.clinic_ward_unit or "",
         }
         for p in patients
+    ])
+
+@app.route("/api/items/search")
+@login_required
+def api_item_search():
+    """Typeahead used on the 'Add Item' form's Item Name field -- lets
+    whoever's adding a new item see if something similar already exists,
+    so they don't accidentally create a duplicate under a slightly
+    different name. Matches on name or SKU, up to 10 results."""
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify([])
+
+    items = (
+        Item.query
+        .filter(Item.name.ilike(f"%{q}%") | Item.sku.ilike(f"%{q}%"))
+        .order_by(Item.name)
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {"id": i.id, "sku": i.sku, "name": i.name, "quantity_on_hand": float(i.quantity_on_hand)}
+        for i in items
     ])
 
 @app.route("/api/patients/check")
