@@ -10,13 +10,17 @@
       <div class="pr-line form-row" style="align-items:flex-end;">
         <div class="form-group">
           <label>Item</label>
-          <select name="item_id[]" class="form-control item-select" required>
-            <option value="">Select item</option>
-            {% for item in items %}
-            <option value="{{ item.id }}">{{ item.name }} ({{ item.sku }})</option>
-            {% endfor %}
-          </select>
+          <div class="typeahead item-typeahead">
+            <input type="text" class="form-control item-search-input"
+                   placeholder="Type item name or SKU..." autocomplete="off" required>
+            <input type="hidden" name="item_id[]" class="item-id-hidden">
+            <div class="typeahead-results item-search-results" hidden></div>
+          </div>
           <div class="line-stats-hint"></div>
+        </div>
+        <div class="form-group">
+          <label>Unit of Issue</label>
+          <input type="text" name="unit_of_issue[]" class="form-control" placeholder="e.g. Tabs, Bottle">
         </div>
         <div class="form-group">
           <label>Quantity</label>
@@ -52,19 +56,113 @@
     color: var(--red, #ff3b5f);
     font-weight: 600;
 }
+.item-typeahead {
+    position: relative;
+}
+.typeahead-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.25rem;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 20;
+}
+.typeahead-result {
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+    border-bottom: 1px solid #262626;
+}
+.typeahead-result:last-child { border-bottom: none; }
+.typeahead-result:hover { background: #222; }
+.typeahead-result-name { color: #ccc; font-weight: 500; font-size: 0.9rem; }
+.typeahead-result-meta { color: #888; font-size: 0.78rem; margin-top: 0.15rem; }
 </style>
 
 <script>
 var RESTOCK_SOURCE = {{ source|tojson }};
 
+function wireItemTypeahead(row) {
+    var searchInput = row.querySelector(".item-search-input");
+    var hiddenInput = row.querySelector(".item-id-hidden");
+    var resultsBox = row.querySelector(".item-search-results");
+    var debounceTimer = null;
+
+    function hideResults() {
+        resultsBox.hidden = true;
+        resultsBox.innerHTML = "";
+    }
+
+    function selectItem(it) {
+        hiddenInput.value = it.id;
+        searchInput.value = it.name;
+        hideResults();
+        fetchAndShowStock(row);
+    }
+
+    searchInput.addEventListener("input", function () {
+        hiddenInput.value = "";
+        var query = searchInput.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            hideResults();
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            fetch("/api/items/search?q=" + encodeURIComponent(query))
+                .then(function (r) { return r.json(); })
+                .then(function (items) {
+                    resultsBox.innerHTML = "";
+                    if (items.length === 0) {
+                        hideResults();
+                        return;
+                    }
+                    items.forEach(function (it) {
+                        var resultRow = document.createElement("div");
+                        resultRow.className = "typeahead-result";
+
+                        var nameEl = document.createElement("div");
+                        nameEl.className = "typeahead-result-name";
+                        nameEl.textContent = it.name;
+                        resultRow.appendChild(nameEl);
+
+                        var metaEl = document.createElement("div");
+                        metaEl.className = "typeahead-result-meta";
+                        metaEl.textContent = "SKU: " + it.sku + " · On hand: " + it.quantity_on_hand;
+                        resultRow.appendChild(metaEl);
+
+                        resultRow.addEventListener("click", function () { selectItem(it); });
+                        resultsBox.appendChild(resultRow);
+                    });
+                    resultsBox.hidden = false;
+                })
+                .catch(function () { hideResults(); });
+        }, 250);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!row.contains(e.target)) hideResults();
+    });
+}
+
+document.querySelectorAll(".pr-line").forEach(wireItemTypeahead);
+
 document.getElementById('add-line-btn').addEventListener('click', function () {
   const wrap = document.getElementById('lines-wrap');
   const clone = wrap.firstElementChild.cloneNode(true);
-  clone.querySelectorAll('input').forEach(i => i.value = '');
-  clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  clone.querySelectorAll('input[type="text"], input[type="number"]').forEach(function (i) { i.value = ''; });
+  clone.querySelector('.item-id-hidden').value = '';
   clone.querySelector('.line-stats-hint').textContent = '';
   clone.querySelector('.line-stats-hint').className = 'line-stats-hint';
+  clone.querySelector('.item-search-results').hidden = true;
+  clone.querySelector('.item-search-results').innerHTML = '';
   wrap.appendChild(clone);
+  wireItemTypeahead(clone);
 });
 
 function renderHint(hintEl, data, row) {
@@ -88,9 +186,9 @@ function renderHint(hintEl, data, row) {
     }
 }
 
-function fetchAndShowStock(selectEl) {
-    var row = selectEl.closest(".pr-line");
-    var itemId = selectEl.value;
+function fetchAndShowStock(row) {
+    var hiddenInput = row.querySelector(".item-id-hidden");
+    var itemId = hiddenInput.value;
     var hintEl = row.querySelector(".line-stats-hint");
 
     if (!itemId) {
@@ -110,12 +208,24 @@ function fetchAndShowStock(selectEl) {
 }
 
 document.getElementById('lines-wrap').addEventListener('change', function (event) {
-    if (event.target.classList.contains('item-select')) {
-        fetchAndShowStock(event.target);
-    } else if (event.target.classList.contains('qty-input')) {
-        var row = event.target.closest('.pr-line');
-        var itemSelect = row.querySelector('.item-select');
-        if (itemSelect.value) fetchAndShowStock(itemSelect);
+    if (event.target.classList.contains('qty-input')) {
+        fetchAndShowStock(event.target.closest('.pr-line'));
+    }
+});
+
+document.querySelector("form").addEventListener("submit", function (e) {
+    var invalid = false;
+    document.querySelectorAll(".pr-line").forEach(function (row) {
+        var searchInput = row.querySelector(".item-search-input");
+        var hiddenInput = row.querySelector(".item-id-hidden");
+        if (searchInput.value.trim() && !hiddenInput.value) {
+            invalid = true;
+            searchInput.style.borderColor = "var(--red, #ff3b5f)";
+        }
+    });
+    if (invalid) {
+        e.preventDefault();
+        alert("Please select an item from the dropdown list for each line before submitting.");
     }
 });
 </script>

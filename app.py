@@ -2007,14 +2007,16 @@ def requisition_restock_new():
         item_ids = request.form.getlist("item_id[]")
         quantities = request.form.getlist("quantity_required[]")
         remarks = request.form.getlist("remarks[]")
+        units = request.form.getlist("unit_of_issue[]")
 
         line_count = 0
-        for item_id, qty, remark in zip(item_ids, quantities, remarks):
+        for item_id, qty, remark, unit in zip(item_ids, quantities, remarks, units):
             if not item_id or not qty:
                 continue
             db.session.add(RequisitionLine(
                 requisition_id=req.id, item_id=item_id,
                 quantity_required=qty, remarks=remark,
+                unit_of_issue=unit.strip() if unit else None,
             ))
             line_count += 1
 
@@ -2267,6 +2269,7 @@ def requisition_new():
         item_ids = request.form.getlist("item_id[]")
         quantities = request.form.getlist("quantity_required[]")
         remarks = request.form.getlist("remarks[]")
+        unit_of_issue = request.form.getlist("unit_of_issue[]")
 
         # ---- Validate each line against this department's own average
         # monthly consumption of that item, before creating anything. ----
@@ -2293,12 +2296,12 @@ def requisition_new():
             return render_template("requisitions/form.html", departments=departments, items=items,
                                     locations=("Drug Store", "Holding"))
 
-        for item_id, qty, remark in zip(item_ids, quantities, remarks):
+        for item_id, qty, remark, unit_of_iss in zip(item_ids, quantities, remarks, unit_of_issue):
             if not item_id or not qty:
                 continue
             db.session.add(RequisitionLine(
                 requisition_id=req.id, item_id=item_id,
-                quantity_required=qty, remarks=remark,
+                quantity_required=qty, remarks=remark, unit_of_issue=unit_of_iss,
             ))
 
         db.session.commit()

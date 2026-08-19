@@ -113,7 +113,7 @@
             <tr>
                 <td>{{ line.item.sku }}</td>
                 <td><a href="{{ url_for('inventory_detail', item_id=line.item_id) }}">{{ line.item.name }}</a></td>
-                <td>{{ line.item.unit_of_issue }}</td>
+                <td>{{ line.unit_of_issue or line.item.unit_of_issue }}</td>
                 <td>{{ line.quantity_required }}</td>
                 <td>
                     {% if can_issue and req.status == "Approved" %}

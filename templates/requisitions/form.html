@@ -40,6 +40,7 @@
             <thead>
                 <tr>
                     <th>Item</th>
+                    <th>Unit of Issue</th>
                     <th>Quantity Required</th>
                     <th>Remarks / Purpose</th>
                     <th></th>
@@ -48,13 +49,16 @@
             <tbody id="req-lines-body">
                 <tr class="req-line-row">
                     <td>
-                        <select name="item_id[]" class="form-control item-select" required>
-                            <option value="">-- Select Item --</option>
-                            {% for item in items %}
-                            <option value="{{ item.id }}">{{ item.name }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="typeahead item-typeahead">
+                            <input type="text" class="form-control item-search-input"
+                                   placeholder="Type item name or SKU..." autocomplete="off" required>
+                            <input type="hidden" name="item_id[]" class="item-id-hidden">
+                            <div class="typeahead-results item-search-results" hidden></div>
+                        </div>
                         <div class="line-stats-hint"></div>
+                    </td>
+                    <td>
+                        <input type="text" name="unit_of_issue[]" class="form-control" placeholder="e.g. Tabs, Bottle">
                     </td>
                     <td>
                         <input type="number" name="quantity_required[]" class="form-control qty-input" step="0.01" min="0" required>
@@ -82,13 +86,16 @@
 <template id="req-line-template">
     <tr class="req-line-row">
         <td>
-            <select name="item_id[]" class="form-control item-select" required>
-                <option value="">-- Select Item --</option>
-                {% for item in items %}
-                <option value="{{ item.id }}">{{ item.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="typeahead item-typeahead">
+                <input type="text" class="form-control item-search-input"
+                       placeholder="Type item name or SKU..." autocomplete="off" required>
+                <input type="hidden" name="item_id[]" class="item-id-hidden">
+                <div class="typeahead-results item-search-results" hidden></div>
+            </div>
             <div class="line-stats-hint"></div>
+        </td>
+        <td>
+            <input type="text" name="unit_of_issue[]" class="form-control" placeholder="e.g. Tabs, Bottle">
         </td>
         <td>
             <input type="number" name="quantity_required[]" class="form-control qty-input" step="0.01" min="0" required>
@@ -116,6 +123,30 @@
     color: var(--red, #ff3b5f);
     font-weight: 600;
 }
+.item-typeahead {
+    position: relative;
+}
+.typeahead-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 0.25rem;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 20;
+}
+.typeahead-result {
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+    border-bottom: 1px solid #262626;
+}
+.typeahead-result:last-child { border-bottom: none; }
+.typeahead-result:hover { background: #222; }
+.typeahead-result-name { color: #ccc; font-weight: 500; font-size: 0.9rem; }
+.typeahead-result-meta { color: #888; font-size: 0.78rem; margin-top: 0.15rem; }
 </style>
 
 <script>
@@ -126,9 +157,80 @@ document.addEventListener("DOMContentLoaded", function () {
     var departmentSelect = document.getElementById("department_id");
     var issuePointSelect = document.getElementById("issue_point");
 
+    // -----------------------------------------------------------------
+    // Item name/SKU typeahead
+    // -----------------------------------------------------------------
+    function wireItemTypeahead(row) {
+        var searchInput = row.querySelector(".item-search-input");
+        var hiddenInput = row.querySelector(".item-id-hidden");
+        var resultsBox = row.querySelector(".item-search-results");
+        var debounceTimer = null;
+
+        function hideResults() {
+            resultsBox.hidden = true;
+            resultsBox.innerHTML = "";
+        }
+
+        function selectItem(it) {
+            hiddenInput.value = it.id;
+            searchInput.value = it.name;
+            hideResults();
+            fetchAndShowStats(row);
+        }
+
+        searchInput.addEventListener("input", function () {
+            hiddenInput.value = "";
+            var query = searchInput.value.trim();
+            clearTimeout(debounceTimer);
+
+            if (query.length < 2) {
+                hideResults();
+                return;
+            }
+
+            debounceTimer = setTimeout(function () {
+                fetch("/api/items/search?q=" + encodeURIComponent(query))
+                    .then(function (r) { return r.json(); })
+                    .then(function (items) {
+                        resultsBox.innerHTML = "";
+                        if (items.length === 0) {
+                            hideResults();
+                            return;
+                        }
+                        items.forEach(function (it) {
+                            var resultRow = document.createElement("div");
+                            resultRow.className = "typeahead-result";
+
+                            var nameEl = document.createElement("div");
+                            nameEl.className = "typeahead-result-name";
+                            nameEl.textContent = it.name;
+                            resultRow.appendChild(nameEl);
+
+                            var metaEl = document.createElement("div");
+                            metaEl.className = "typeahead-result-meta";
+                            metaEl.textContent = "SKU: " + it.sku + " · On hand: " + it.quantity_on_hand;
+                            resultRow.appendChild(metaEl);
+
+                            resultRow.addEventListener("click", function () { selectItem(it); });
+                            resultsBox.appendChild(resultRow);
+                        });
+                        resultsBox.hidden = false;
+                    })
+                    .catch(function () { hideResults(); });
+            }, 250);
+        });
+
+        document.addEventListener("click", function (e) {
+            if (!row.contains(e.target)) hideResults();
+        });
+    }
+
+    linesBody.querySelectorAll(".req-line-row").forEach(wireItemTypeahead);
+
     addLineBtn.addEventListener("click", function () {
         var clone = lineTemplate.content.cloneNode(true);
         linesBody.appendChild(clone);
+        wireItemTypeahead(linesBody.querySelector(".req-line-row:last-child"));
     });
 
     linesBody.addEventListener("click", function (event) {
@@ -168,9 +270,9 @@ document.addEventListener("DOMContentLoaded", function () {
         hintEl.textContent = parts.join(" · ");
     }
 
-    function fetchAndShowStats(selectEl) {
-        var row = selectEl.closest(".req-line-row");
-        var itemId = selectEl.value;
+    function fetchAndShowStats(row) {
+        var hiddenInput = row.querySelector(".item-id-hidden");
+        var itemId = hiddenInput.value;
         var hintEl = row.querySelector(".line-stats-hint");
 
         if (!itemId) {
@@ -197,21 +299,40 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function refreshAllLineHints() {
-        linesBody.querySelectorAll(".item-select").forEach(function (select) {
-            if (select.value) fetchAndShowStats(select);
+        linesBody.querySelectorAll(".req-line-row").forEach(function (row) {
+            if (row.querySelector(".item-id-hidden").value) fetchAndShowStats(row);
         });
     }
 
     linesBody.addEventListener("change", function (event) {
-        if (event.target.classList.contains("item-select") || event.target.classList.contains("qty-input")) {
-            var row = event.target.closest(".req-line-row");
-            var itemSelect = row.querySelector(".item-select");
-            if (itemSelect.value) fetchAndShowStats(itemSelect);
+        if (event.target.classList.contains("qty-input")) {
+            fetchAndShowStats(event.target.closest(".req-line-row"));
         }
     });
 
     departmentSelect.addEventListener("change", refreshAllLineHints);
     issuePointSelect.addEventListener("change", refreshAllLineHints);
+
+    // -----------------------------------------------------------------
+    // Block submit if a row has typed text but never actually selected
+    // an item from the list (hidden item_id still empty) -- otherwise
+    // that line silently gets dropped server-side.
+    // -----------------------------------------------------------------
+    document.querySelector("form").addEventListener("submit", function (e) {
+        var invalid = false;
+        linesBody.querySelectorAll(".req-line-row").forEach(function (row) {
+            var searchInput = row.querySelector(".item-search-input");
+            var hiddenInput = row.querySelector(".item-id-hidden");
+            if (searchInput.value.trim() && !hiddenInput.value) {
+                invalid = true;
+                searchInput.style.borderColor = "var(--red, #ff3b5f)";
+            }
+        });
+        if (invalid) {
+            e.preventDefault();
+            alert("Please select an item from the dropdown list for each line before submitting.");
+        }
+    });
 });
 </script>
 {% endblock %}

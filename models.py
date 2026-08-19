@@ -501,6 +501,10 @@ class RequisitionLine(db.Model):
     # returned to store (e.g. unused emergency trolley stock). Only ever
     # relevant for lines where quantity_issued > 0.
     quantity_returned = db.Column(db.Numeric(12, 2), default=0)
+    # What the requester typed in for this specific line (e.g. "Tabs",
+    # "Bottle") — independent of the item's catalog unit_of_issue, since
+    # the same drug can sometimes be requested by different units.
+    unit_of_issue = db.Column(db.String(50))
     remarks = db.Column(db.String(255))
 
     requisition = db.relationship("Requisition", back_populates="lines")
