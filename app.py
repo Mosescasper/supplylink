@@ -2271,30 +2271,7 @@ def requisition_new():
         remarks = request.form.getlist("remarks[]")
         unit_of_issue = request.form.getlist("unit_of_issue[]")
 
-        # ---- Validate each line against this department's own average
-        # monthly consumption of that item, before creating anything. ----
-        errors = []
-        for item_id, qty in zip(item_ids, quantities):
-            if not item_id or not qty:
-                continue
-            item = Item.query.get(item_id)
-            qty = float(qty)
-            avg = _department_avg_monthly_consumption(department_id, item_id)
-            if avg is not None:
-                cap = avg * Config.REQUISITION_MAX_MULTIPLIER
-                if qty > cap:
-                    errors.append(
-                        f"{item.name}: requested {qty:g}, but this department's average "
-                        f"monthly usage is {avg:.1f} (cap: {cap:.1f}). Reduce the quantity "
-                        f"or contact an admin if this is a genuine spike."
-                    )
-
-        if errors:
-            db.session.rollback()
-            for e in errors:
-                flash(e, "danger")
-            return render_template("requisitions/form.html", departments=departments, items=items,
-                                    locations=("Drug Store", "Holding"))
+q
 
         for item_id, qty, remark, unit_of_iss in zip(item_ids, quantities, remarks, unit_of_issue):
             if not item_id or not qty:
